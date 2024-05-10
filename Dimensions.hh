@@ -29,15 +29,19 @@ typedef struct Dimensions
         struct Dimensions* next;
         struct Dimensions* prev;
 
+        //unsigned int reference_count;
+        cc_tokenizer::string_character_traits<char>::size_type reference_count;
+
+
     public:
 
     // Default constructor
-    Dimensions (void) : columns(0), rows(0), next(NULL), prev(NULL)
+    Dimensions (void) : columns(0), rows(0), next(NULL), prev(NULL), reference_count(0) 
     {
 
     }
 
-    Dimensions (DIMENSIONSOFARRAY dimensionsOfArray) : columns(0), rows(0), next(NULL), prev(NULL) 
+    Dimensions (DIMENSIONSOFARRAY dimensionsOfArray) : columns(0), rows(0), next(NULL), prev(NULL), reference_count(0)  
     {        
         if (dimensionsOfArray.size())
         {
@@ -74,13 +78,13 @@ typedef struct Dimensions
         }
     }
 
-    // Copy constructor
-    Dimensions(Dimensions& ref) : columns(ref.columns), rows(ref.rows), next(ref.next), prev(ref.prev)
+    // Copy constructor, the caller should have called the incrementReferemceCount() already
+    Dimensions(Dimensions& ref) : columns(ref.columns), rows(ref.rows), next(ref.next), prev(ref.prev), reference_count(ref.reference_count)
     {
 
     }
         
-    Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, struct Dimensions* n, struct Dimensions* p) : columns(c), rows(r), next(n), prev(p)
+    Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, struct Dimensions* n, struct Dimensions* p) : columns(c), rows(r), next(n), prev(p), reference_count(0)
     {
     }
 
@@ -135,6 +139,53 @@ typedef struct Dimensions
 
         //std::cout<<"In the destructor...."<<std::endl;        
     }
+
+    /*
+            As the object is assigned to variables or passed around, the reference count is incremented (meaning there's one more way to access it).
+         */
+        void incrementReferenceCount(void) 
+        {
+            reference_count++;
+        }
+        /*
+            When a reference goes out of scope or is explicitly released, the reference count is decremented.
+         */
+        void decrementReferenceCount(void)
+        {
+            if (reference_count != 0)
+            {
+                reference_count--;
+            }
+
+            /*
+                Double Deletion: Make sure that you only call decrementReferenceCount() method
+                when you atleast have one more reference/pointer to this object. Otherwise double deletion
+                may occur,  You explicitly call the destructor which frees the resources and then the same 
+                destructor gets called automatically when the object which had no references/pointers to begin wuth goes 
+                out of scope.
+             */
+            /*
+                Double Deletion Warning...
+                Be cautious when calling decrementReferenceCount() within this function.
+                Ensure there's at least one more reference (pointer) to the object before decrementing the
+                count. Otherwise, double deletion might occur.
+
+                This happens because...
+                - You explicitly call the destructor (delete this;), which frees the object's resources.
+                - However, the object's destructor might also be called automatically when the object
+                  (with no remaining references) goes out of scope. This can lead to the same memory location being deleted twice.
+             */
+            if (reference_count == 0)
+            {
+                delete this;
+            }
+
+            /*
+                When the reference count reaches zero in decrementReferenceCount, the object itself goes out of scope.
+                This triggers the automatic invocation of the destructor, which then takes care of deleting 
+                the memory and performing any necessary cleanup tasks.
+             */           
+        }
 
     /*
         Creates copy of "instance reference"/"self reference" of type DIMENSIONS(It goes through the whole linkedlist and creates a copy).

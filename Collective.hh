@@ -16,8 +16,18 @@ template<typename E = double>
 struct Collective 
 {
     private:
-        E* ptr;        
-        unsigned int reference_count;
+        E* ptr;
+        /*
+            Reference counting tracks the number of active references (pointers or other ways to access) to an object.
+            When an object is first created, there are no references to it, so the count should be 0.
+           
+            The responsibility of managing the reference count lies with the class itself...
+            the incrementRefernceCount() and decrementReferenceCount() methods and the implementation of 
+            destructor method         
+         */        
+        //unsigned int reference_count;
+        cc_tokenizer::string_character_traits<char>::size_type reference_count;
+
     
     public:        
         DIMENSIONS shape;
@@ -60,23 +70,56 @@ struct Collective
         {
             return shape;
         }
-
+        
+        /*
+            As the object is assigned to variables or passed around, the reference count is incremented (meaning there's one more way to access it).
+         */
         void incrementReferenceCount(void) 
         {
             reference_count++;
-        }
 
+            shape.incrementReferenceCount();
+        }
+        /*
+            When a reference goes out of scope or is explicitly released, the reference count is decremented.
+         */
         void decrementReferenceCount(void)
         {
+            shape.decrementReferenceCount();
+
             if (reference_count != 0)
             {
                 reference_count--;
             }
+            
+            /*
+                Double Deletion: Make sure that you only call decrementReferenceCount() method
+                when you atleast have one more reference/pointer to this object. Otherwise double deletion
+                may occur,  You explicitly call the destructor which frees the resources and then the same 
+                destructor gets called automatically when the object which had no references/pointers to begin wuth goes 
+                out of scope.
+             */
+            /*
+                Double Deletion Warning...
+                Be cautious when calling decrementReferenceCount() within this function.
+                Ensure there's at least one more reference (pointer) to the object before decrementing the
+                count. Otherwise, double deletion might occur.
 
-            /*if (reference_count == 0)
+                This happens because...
+                - You explicitly call the destructor (delete this;), which frees the object's resources.
+                - However, the object's destructor might also be called automatically when the object
+                  (with no remaining references) goes out of scope. This can lead to the same memory location being deleted twice.
+             */
+            if (reference_count == 0)
             {
                 delete this;
-            }*/
+            }
+
+            /*
+                When the reference count reaches zero in decrementReferenceCount, the object itself goes out of scope.
+                This triggers the automatic invocation of the destructor, which then takes care of deleting 
+                the memory and performing any necessary cleanup tasks.
+             */           
         }
         
         /**
@@ -95,13 +138,16 @@ struct Collective
             {
                 return;
             }
-                        
+
+            /*
+                When the reference count reaches 0, it signifies there are no more active references, and the object's memory can be safely deallocated.
+             */
+
+            /*
+                To stop the effects of double deletion... becuse we are explicitly calling the destructor method of this object
+             */
             if (ptr != NULL)
-            {            
-                //cc_tokenizer::allocator<char> alloc_obj;
-
-                //alloc_obj.deallocate(reinterpret_cast<char*>(ptr));
-
+            {                            
                 cc_tokenizer::allocator<E>().deallocate(ptr);
 
                 /* 

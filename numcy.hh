@@ -583,6 +583,75 @@ class Numcy
             return Collective<E>{ptr, m2.getShape().copy()};
         }
 
+        /*
+         * This function calculates the sign of elements in a Numcy array 'x'.
+         * It returns a new Collective object with the same shape as 'x' containing the signs.
+         *
+         * Throws exceptions of type 'ala_exception' in the following cases:
+         *   - If the input array 'x' has an empty shape (zero elements).
+         *   - If memory allocation for the output array fails.
+         *
+         * The function iterates through each element of 'x':
+         *   - If the element is NaN (Not a Number), it's copied directly to the output.
+         *   - If the element is a complex number (imaginary part != 0), it's copied directly to the output 
+             (since the sign function is not defined for complex numbers in this implementation).
+         *  - Otherwise, the sign of the element is determined:
+         *  - Negative: -1 is assigned to the output.
+         *  - Positive: 1 is assigned to the output.
+         *  - Zero: 0 is assigned to the output.
+ 
+         * Note: This implementation treats elements close to zero (within a tolerance level) 
+          as zero for efficiency purposes. The tolerance level is not explicitly defined 
+          in this code but could be added as a parameter if needed.
+        */                  
+        template<typename E = double>
+        static Collective<E> sign(Collective<E>& x) throw (ala_exception)
+        {
+            if (!x.getShape().getN())
+            {
+                throw ala_exception("Numcy::sign() Error: Malformed shape of the array received as one of the arguments.");
+            }
+
+            E* ptr = NULL;
+
+            try 
+            {
+                ptr = cc_tokenizer::allocator<E>().allocate(x.getShape().getN());
+            }
+            catch (ala_exception& e)
+            {                                
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sign() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+            {      
+                std::complex<E> num(x[i]);
+                                  
+                if (_isnan(x[i]))
+                {
+                    ptr[i] = x[i];
+                }
+                else if (std::imag(num) != 0)
+                {
+                    ptr[i] = x[i];
+                }
+                else if (x[i] < 0)
+                {
+                    ptr[i] = -1;                    
+                }
+                else if (x[i] > 0)
+                {
+                    ptr[i] = 1;
+                } 
+                else if (x[i] == 0)
+                {
+                    ptr[i] = 0;
+                }                            
+            }
+
+            return Collective<E>{ptr, x.getShape().copy()};
+        }
+    
         template<typename E>
         static struct Collective<E> sin(Collective<E> x) 
         {
