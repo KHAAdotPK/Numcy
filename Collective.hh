@@ -34,10 +34,31 @@ struct Collective
 
         // Default constructor
         Collective (void) : ptr(NULL), shape(Dimensions{0, 0, NULL, NULL}), reference_count(0)
-        {        
+        {              
         }
 
         Collective (E* v, DIMENSIONS like) : ptr(v), shape(like), reference_count(0)
+        {
+        }
+
+        /**
+         * Constructor for the Collective class.
+         *
+         * This constructor initializes the object's member variables:
+         *  - `ptr`: Pointer to data (of type E*)
+         *  - `shape`: Shape information (of type DIMENSIONS)
+         *  - `reference_count`: Initial reference count (set to the provided `count`)
+         *
+         * **Important Note:** It's crucial to avoid explicitly calling `delete this;` within the constructor 
+         * or the `decrementReferenceCount` function. This is because the object's memory will be 
+         * automatically managed through the destructor when the reference count reaches zero. Explicitly 
+         * deleting the object within these methods leads to "double deletion" and program crashes.
+         *
+         * @param v Pointer to data (of type E*)
+         * @param like Shape information (of type DIMENSIONS)
+         * @param count Initial reference count
+         */
+        Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) : ptr(v), shape(like), reference_count(count)
         {
         }
 
@@ -70,6 +91,11 @@ struct Collective
         {
             return shape;
         }
+
+        cc_tokenizer::string_character_traits<char>::size_type showReferenceCounter(void)
+        {
+            return reference_count;
+        }
         
         /*
             As the object is assigned to variables or passed around, the reference count is incremented (meaning there's one more way to access it).
@@ -78,7 +104,7 @@ struct Collective
         {
             reference_count++;
 
-            shape.incrementReferenceCount();
+            //shape.incrementReferenceCount();
         }
         /*
             When a reference goes out of scope or is explicitly released, the reference count is decremented.
@@ -110,9 +136,36 @@ struct Collective
                 - However, the object's destructor might also be called automatically when the object
                   (with no remaining references) goes out of scope. This can lead to the same memory location being deleted twice.
              */
-            if (reference_count == 0)
+            else if (reference_count == 0)
             {
-                delete this;
+                /*
+                    Look for better version of this comment block below...
+                    ---------------------------------------------------------
+                    Gemini please make the following comment better... 
+                    Some how I think this is not the way to call the constructor explicitly, 
+                    I am compiling this program with cl(Visual Studio Tools) and when the following
+                    statement gets executed whole program just crashes.
+
+                    Naively I provided a constructor for this class which takes the refeence_count as an one of its arguments.
+                    The idea is that a the time if instanciation you set the reference count to 1, and then during the ife time of the instanciated object 
+                    you call this method(the decrement reference count) in the hope that object resources get collected in safe manner,
+                    but even then program crashes when I call this decrementReferenceCount() method.
+                 */
+                /*
+                    Better version of above comments...
+                    --------------------------------------
+                    There seems to be an issue with explicitly calling the destructor within the 
+                    `decrementReferenceCount` function. While compiling with cl (Visual Studio Tools),
+                    the program crashes when the commented-out line `delete this;` is executed.
+
+                    My initial approach was to provide a constructor that takes the `reference_count`
+                    as an argument. This was intended to set the initial reference count to 1
+                    during object creation. Subsequently, I planned to call `decrementReferenceCount`
+                    throughout the object's lifetime to manage memory in a controlled manner.
+                    However, the program crashes even with this approach.
+                 */
+
+                //delete this;
             }
 
             /*
@@ -138,7 +191,7 @@ struct Collective
             {
                 return;
             }
-
+            
             /*
                 When the reference count reaches 0, it signifies there are no more active references, and the object's memory can be safely deallocated.
              */
@@ -191,7 +244,7 @@ struct Collective
          * @return A reference to the current instance after assignment.
          */
         Collective& operator= (Collective &other) throw (ala_exception)
-        {
+        {            
             // Check for self-assignment
             if (this == &other)
             {

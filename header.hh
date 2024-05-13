@@ -10,7 +10,7 @@
 #include <random>
 
 #include "../ala_exception/ala_exception.hh"
-#include "../String/src/allocator.hh"
+#include "../allocator/allocator.hh"
 #include "../String/src/string_character_traits.hh"
 
 #include "macros.hh"
