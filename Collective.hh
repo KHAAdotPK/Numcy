@@ -27,8 +27,7 @@ struct Collective
          */        
         //unsigned int reference_count;
         cc_tokenizer::string_character_traits<char>::size_type reference_count;
-
-    
+            
     public:        
         DIMENSIONS shape;
 
@@ -37,8 +36,28 @@ struct Collective
         {              
         }
 
-        Collective (E* v, DIMENSIONS like) : ptr(v), shape(like), reference_count(0)
+        /*Collective (E* v, DIMENSIONS like) : ptr(v), shape(like), reference_count(0)*/
+        Collective (E* v, DIMENSIONS like)
         {
+            try 
+            {                    
+                ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                {
+                    ptr[i] = v[i];                
+                }
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            
+            shape = *(like.copy());
+            reference_count = 0;        
         }
 
         /**
@@ -58,12 +77,52 @@ struct Collective
          * @param like Shape information (of type DIMENSIONS)
          * @param count Initial reference count
          */
-        Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) : ptr(v), shape(like), reference_count(count)
-        {
+        /*Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) : ptr(v), shape(like), reference_count(count)*/
+        Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) 
+        {            
+            try 
+            {                    
+                ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                {
+                    ptr[i] = v[i];                
+                }
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            
+            shape = *(like.copy());
+            reference_count = count;
         }
 
-        Collective (E *v, Dimensions *like) : ptr(v), shape(*like), reference_count(0)
-        {            
+        /*Collective (E *v, Dimensions *like) : ptr(v), shape(*like), reference_count(0)*/
+        Collective (E *v, Dimensions* like)
+        { 
+            try 
+            {                    
+                ptr = cc_tokenizer::allocator<E>().allocate(like->getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like->getN(); i++)
+                {
+                    ptr[i] = v[i];                
+                }
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            
+            shape = *(like->copy());
+            reference_count = 0;           
         }
 
         Collective (Collective<E>& other) throw (ala_exception)
@@ -73,6 +132,10 @@ struct Collective
             try 
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
             }
             catch (std::bad_alloc& e)
             {
@@ -278,17 +341,22 @@ struct Collective
             try 
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                {
+                    ptr[i] = other[i];
+                }
             }
-            catch (std::bad_alloc &e)
+            catch (std::length_error& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
             }
-
-            for (size_t i = 0; i < other.getShape().getN(); i++)
+            catch (std::bad_alloc& e)
             {
-                ptr[i] = other[i];
+                throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
             }
-            shape = other.shape;
+            
+            //shape = other.shape;
+            shape = *(other.getShape().copy());
 
             // Increment the reference count of the new instance
             /*

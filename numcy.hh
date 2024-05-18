@@ -21,9 +21,9 @@ class Numcy
                     Make it variadic function
                  */
                 template <typename E = double>
-                static Collective<E> randn(DIMENSIONS& shape) throw (ala_exception)
+                static Collective<E> randn(DIMENSIONS& like) throw (ala_exception)
                 {                    
-                    cc_tokenizer::string_character_traits<char>::size_type n = shape.getN();
+                    cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     
                     if (n == 0)
                     {
@@ -53,7 +53,7 @@ class Numcy
                         ptr[i] = nd(gen);                        
                     }
 
-                    return Collective<E>{ptr, shape.copy()};
+                    return Collective<E>{ptr, like.copy()};
                 }
 
                 /*
@@ -301,25 +301,49 @@ class Numcy
          *   [24.07 98.81]
          *
          * @note The input matrices must have compatible shapes for dot product, i.e., the
-         *       number of columns in the first matrix must match the number of rows in the second matrix.
+         *       number of columns in the first matrix must match the number of rows in the second matrix
+         *       or second matrix is a scalar.
          */
-        template<typename E>
-        static /*E**/ struct Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
-        {
-            //std::cout<<a.shape.rows<<", "<<a.shape.columns<<std::endl;
-
-            /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+        template<typename E = double>
+        static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
+        {               
+            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
             {
-                if (_isnanf(a[i]))
+                //throw ala_exception("Numcy::dot(): Incompatible shapes for dot product: Number of columns in the first matrix does not match the number of rows in the second matrix.");
+                if (!(b.getShape().getN() == 1))
                 {
-                    std::cout<< "Found......" << std::endl;
+                    // Needs exception message...
+                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product...\neither number of columns of the first matrix must match the number of rows of the second matrix,\nor second matrix has to be a scalar.");
                 }
-            }*/
-
-            if (a.shape.getNumberOfColumns() != b.shape.getNumberOfRows().getNumberOfInnerArrays())
+            }
+            
+            std::function</*E*()*/ Collective<E>()> multiplier_is_scalar_func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
             {
-                throw ala_exception("Numcy::dot(): Incompatible shapes for dot product: Number of columns in the first matrix does not match the number of rows in the second matrix.");
-            }                        
+                Collective<E> ret;                
+                try 
+                {
+                    E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                    {
+                        ptr[i] = a[i] * b[0];
+                    }
+                    ret = Collective<E>{ptr, a.getShape().copy()};                    
+                }    
+                catch(std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }    
+                
+                return ret;
+            };                        
             /*
                 Immutable capture list...
                 ----------------------------
@@ -335,7 +359,7 @@ class Numcy
                 If you need to modify a and b within the lambda, you should capture them by reference using [&a, &b] in the capture list.
                 However, this would require that a and b are mutable in the outer scope.
              */                        
-            std::function</*E*()*/struct Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
+            std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
             {                  
                 cc_tokenizer::allocator<char> alloc_obj;
                 E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
@@ -343,9 +367,7 @@ class Numcy
                     TODO, check if it is actually working
                  */
                 memset(ptr, 0, sizeof(E)*b.shape.getNumberOfColumns());
-                
-                struct Collective<E> ret = {ptr, {b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
-
+                                
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.shape.getNumberOfColumns(); i++)
                 {                    
                     for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.shape.getNumberOfColumns(); j++)
@@ -354,11 +376,19 @@ class Numcy
                     }   
                 }
 
-                //return ptr;
+                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+                
                 return ret;
             };
            
-           return func();
+           if (b.getShape().getN() == 1)
+           {                   
+                return multiplier_is_scalar_func();
+           }
+           else 
+           {                
+                return func();
+           }
            //return NULL;
         }
 
@@ -391,7 +421,7 @@ class Numcy
         {
             if (!a.getShape().getN())
             {
-                throw ala_exception("Numcy::exp() Error: Malformed shape of the array received as one of the arguments");
+                throw ala_exception("Numcy::exp() Error: Malformed shape of the array received as one of the arguments.");
             }
 
             E* ptr = NULL;
@@ -399,6 +429,10 @@ class Numcy
             try
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::exp() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
             catch (std::bad_alloc& e)
             {
@@ -444,6 +478,10 @@ class Numcy
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(1);                
             }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::max() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }    
             catch (std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::max() Error: ") + cc_tokenizer::String<char>(e.what()));
@@ -708,10 +746,14 @@ class Numcy
                     We used the size of matrix x1, because x2 could be scalar
                  */
                 ptr = cc_tokenizer::allocator<E>().allocate(x1.getShape().getN());
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));
             } 
             catch (std::bad_alloc& e)
             {
-                throw ala_exception(e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));                
             }
 
             if (x2.getShape().getN() > 1)
@@ -735,7 +777,7 @@ class Numcy
         template<typename E>
         static Collective<E> sum(Collective<E>& m1, Collective<E>& m2, AXIS axis = AXIS_NONE) throw (ala_exception)
         {
-            if (m1.getShape() != m2.getShape())
+            if (!(m1.getShape() == m2.getShape()))
             {
                 throw ala_exception("Numcy::sum() Error: Shape of both input vectors is not same.");
             }
@@ -751,7 +793,7 @@ class Numcy
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().genN(); i++)
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
             {
                 ptr[i] = m1[i] + m2[i];
             }
@@ -773,6 +815,10 @@ class Numcy
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(1);
             }
+            catch(std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
             catch(std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
@@ -789,7 +835,7 @@ class Numcy
                    } 
                break;
                default:
-                   throw ala_exception(""); 
+                   throw ala_exception("Numcy::sum() Error: Unknown axis."); 
                break; 
             }
 
