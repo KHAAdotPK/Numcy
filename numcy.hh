@@ -776,10 +776,107 @@ class Numcy
 
         template<typename E>
         static Collective<E> sum(Collective<E>& m1, Collective<E>& m2, AXIS axis = AXIS_NONE) throw (ala_exception)
-        {
-            if (!(m1.getShape() == m2.getShape()))
+        {   
+            if (!m1.getShape().getN() || !m2.getShape().getN())
             {
-                throw ala_exception("Numcy::sum() Error: Shape of both input vectors is not same.");
+                throw ala_exception("Numcy::sum() Error: Atleast one of the vectors is empty.");
+            }
+
+            E* ptr = NULL;
+            DIMENSIONS dim;
+
+            switch (axis)
+            {
+                case AXIS_NONE:
+                   if (!(m1.getShape() == m2.getShape()))
+                   {                
+                        if (!(m2.getShape().getN() == 1))
+                        {
+                            throw ala_exception("Numcy::sum() Error: Shape of both input vectors is either not same or, the size of second vector argument is not 1.");
+                        }
+                    }
+
+                    try 
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(m1.getShape().getN());
+                        dim = *(m1.getShape().copy());
+                    } 
+                    catch (std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    if (m2.getShape().getN() == 1)
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
+                        {
+                            ptr[i] = m1[i] + m2[0];
+                        }
+                    }
+                    else
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
+                        {
+                            ptr[i] = m1[i] + m2[i];
+                        }
+                    }
+                break;
+                case AXIS_ROWS:
+                    if (m1.getShape().getNumberOfColumns() != m2.getShape().getNumberOfColumns())
+                    {
+                        throw ala_exception("Numcy::sum() Error: Summation across rows assumes same number of columns for both input vectors.");
+                    }
+
+                    //cc_tokenizer::string_character_traits<char>::size_type n = (m1.getShape().getN() > m2.getShape().getN()) ? m1.getShape().getN() : m2.getShape().getN();
+
+                    try 
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate((m1.getShape().getN() > m2.getShape().getN()) ? m1.getShape().getN() : m2.getShape().getN());
+                        dim = (m1.getShape().getN() > m2.getShape().getN()) ? *(m1.getShape().copy()) : *(m2.getShape().copy());
+                    } 
+                    catch (std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }    
+
+                    if (m1.getShape().getN() > m2.getShape().getN())
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (m1.getShape().getN() / m2.getShape().getN()); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < m2.getShape().getN(); j++)
+                            {
+                                ptr[i*m2.getShape().getN() + j] = m1[i*m2.getShape().getN() + j] + m2[j];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (m2.getShape().getN() / m1.getShape().getN()); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < m1.getShape().getN(); j++)
+                            {
+                                ptr[i*m1.getShape().getN() + j] = m1[i*m1.getShape().getN() + j] + m1[j];
+                            }
+                        }
+                    }
+
+                break;
+            }
+/*
+            if (!(m1.getShape() == m2.getShape()))
+            {                
+                if (!(m2.getShape().getN() == 1))
+                {
+                    throw ala_exception("Numcy::sum() Error: Shape of both input vectors is either not same or, the size of second vector argument is not 1.");
+                }
             }
 
             E* ptr = NULL;
@@ -793,12 +890,24 @@ class Numcy
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
+            if (m2.getShape().getN() == 1)
             {
-                ptr[i] = m1[i] + m2[i];
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
+                {
+                    ptr[i] = m1[i] + m2[0];
+                }
+            }
+            else
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getN(); i++)
+                {
+                    ptr[i] = m1[i] + m2[i];
+                }
             }
 
             return Collective<E>{ptr, m1.getShape().copy()};
+*/
+            return Collective<E>{ptr, *(dim.copy())};
         } 
 
         template<typename E>

@@ -69,7 +69,11 @@ enum AXIS
     AXIS_COLUMN = 1,// Number of rows in a must match number of columns in b. Stacking horizontally
     AXIS_LAST = -1, // In two dimentional aray, the number of rows in a must match number of columns in b 
 
-    AXIS_ROWS = 0, // Horizontal stack of lines
+    /*
+        Specifies that the summation should be done across rows.
+        The resulting array will have the same number of columns as the input vectors.
+     */
+    AXIS_ROWS = 0, // Horizontal stack of rows, summation along the rows. 
     AXIS_NONE =  2, // [1][a_rs*a_column + b_rs*b_columns] when rs is total number of rows. Results in one horizontal line
 };
 
