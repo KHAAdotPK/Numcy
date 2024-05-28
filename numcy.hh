@@ -490,7 +490,89 @@ class Numcy
             *ptr = me;
             
             return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
-        } 
+        }
+
+        template<typename E = double, typename F = cc_tokenizer::string_character_traits<char>::size_type>
+        static Collective<E> mean(Collective<E>& a, Collective<F>& like, AXIS axis = AXIS_ROWS) throw (ala_exception)
+        {
+            if (!a.getShape().getN())
+            {
+                throw ala_exception("Numcy::mean() Error: Malformed shape of the array received as one of the arguments.");
+            }
+
+            E* ptr = NULL;
+            Collective<E> ret;
+
+            switch (axis)
+            {
+                case AXIS_ROWS:
+                    try
+                    {  
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfColumns());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                        {
+                            ptr[i] = 0;
+                        }
+
+                        if (like.getShape().getN())
+                        {                                                                            
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getShape().getN(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[j] = ptr[j] + a[like[i]*a.getShape().getNumberOfColumns() + j];
+                                }
+                            }
+
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                            {
+                                ptr[i] = ptr[i] / like.getShape().getN();
+                            }
+
+                            ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
+                        }
+                        else
+                        {
+                            // What to do here for this axis...
+                            /*
+                                If a has only one inner array, then return that inner array as it is.
+                                On the other hand if a has few or many inner arrays then take the column wise mean of all inner arrays.
+                             */   
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[j] = ptr[j] + a[i*a.getShape().getNumberOfColumns() + j];
+                                }
+                            }
+
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                            {
+                                ptr[i] = ptr[i] / like.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                            }
+
+                            ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
+                        }
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean() Error: ") + cc_tokenizer::String<char>(e.what()));                        
+                    }
+                                        
+                break;
+            }
+            
+            return ret;
+        }
 
         /*
             Return a new array of given shape and type, filled with ones.
