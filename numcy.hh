@@ -606,6 +606,8 @@ class Numcy
             @m1, shape (1, M) of 1 row and M columns
             @m2, shape (1, N) of 1 row and N columns
             The shape of returned matrix is (M, N)
+                        
+            The values of m1.getShape().getN() and m2.getShape().getN() might or might not be the same.
 
             Given two vectors, a = [a0, a1, ..., aM] and b = [b0, b1, ..., bN], the outer product is...
             [[a0*b0  a0*b1 ... a0*bN ]
@@ -622,14 +624,16 @@ class Numcy
          */
         template<typename E = double>
         static Collective<E> outer(Collective<E>& m1, Collective<E>& m2) throw (ala_exception)
-        {   
-            //std::cout<< "m1 -> " << m1.getShape().getNumberOfColumns() << ", " << m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << std::endl;
-            //std::cout<< "m2 -> " << m2.getShape().getNumberOfColumns() << ", " << m2.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << std::endl;
-
-            if (m1.getShape().getN() != m2.getShape().getN())
+        {               
+            /*                
+                This commented block should have been removed,
+                but I want it to remain for a little longer.
+                I need to find out why I put this block of code here in the first place.
+             */
+            /*if (m1.getShape().getN() != m2.getShape().getN())
             {
                 throw ala_exception("Numcy::outer() Error: Input vectors have incompatible shapes. After flattening, both vectors must have the same number of elements.");
-            }
+            }*/
             
             E* ptr = NULL;
 
