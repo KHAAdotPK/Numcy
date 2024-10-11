@@ -554,7 +554,7 @@ struct Collective
                 }
             }
         }
-                                
+                                        
         ////cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<cc_tokenizer::string_character_traits<char>::pointer>(a.ptr));
         ////cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<cc_tokenizer::string_character_traits<char>::pointer>(b.ptr));
 
@@ -565,6 +565,60 @@ struct Collective
         alloc_obj.deallocate(reinterpret_cast<cc_tokenizer::string_character_traits<char>::pointer>(dim_head));
 
         return ret;
+    }
+
+    /**
+      * @brief Slices a portion of data starting from a given index and for a specified length.
+      * 
+      * This method returns a dynamically allocated slice of elements from the data buffer starting at index 'i' 
+      * and spanning 'n' elements. The function performs several safety checks, including ensuring that the 
+      * slice length 'n' is greater than zero and that the slice does not exceed the bounds of the available data. 
+      * If these conditions are violated, an `ala_exception` is thrown. Additionally, the method manages memory 
+      * allocation for the slice, throwing an `alloc_exception` in case of memory allocation issues.
+      *
+      * @param i The starting index from which the slice begins.
+      * @param n The number of elements to include in the slice.
+      * @return E* A pointer to the allocated array containing the sliced data.
+      * 
+      * @throws ala_exception If the slice length 'n' is less than or equal to zero or if the slice exceeds 
+      * the bounds of the available data.
+      * @throws alloc_exception If memory allocation for the slice fails.
+      *
+      * @todo Extend this function to handle more complex shapes, not just simple linear slices.
+    */
+    E* slice(cc_tokenizer::string_character_traits<char>::size_type i, cc_tokenizer::string_character_traits<char>::size_type n) throw(ala_exception)
+    {
+        E* slice_ptr = NULL;
+
+        if (!(n > 0))
+        {
+            throw ala_exception("Collective::slice() Error: The slice length 'n' must be greater than zero.");
+        }
+
+        if ((i + n) > shape.getN())
+        {
+            throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data.");
+        }
+
+        try
+        {
+            slice_ptr = cc_tokenizer::allocator<E>().allocate(n);
+
+            for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < n; j++)
+            {
+                slice_ptr[j] = ptr[i + j];
+            }
+        }
+        catch(const std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));                
+        }
+        catch(const std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+        
+        return slice_ptr;
     }
 };
 #endif

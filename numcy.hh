@@ -12,12 +12,257 @@
    Does not modify the internal state of the class within the most of the methods.
  */
 class Numcy
-{   
-    public: 
+{       
+    public:    
+        /*
+            The product of two matrices can be computed by multiplying elements of the first row of the first matrix with the first column 
+            of the second matrix then, add all the product of elements. Continue this process until each row of the first matrix is multiplied 
+            with each column of the second matrix.
+
+            [2.3 3.4 1.2 1.0] * [2.3  8.9]  = [(2.3*2.3 + 3.4*1.0 + 1.2*9.0 + 1.0*3.2) (2.3*8.9 + 3.4*1.0 + 1.2*2.3 + 1.0*8.9)] = [22.69  35.53]
+                                [1.0  1.0]
+                                [9.0  2.3]
+                                [3.2  8.9]                                           
+         */
+        /**
+         * Calculate the dot product of two matrices represented by Collective objects.
+         *
+         * @tparam E        The element type of the matrices.
+         * @param a         The first input matrix.
+         * @param b         The second input matrix.
+         * @return          A new Collective object representing the result of the dot product.
+         * @throws ala_exception If the matrices have incompatible shapes for dot product.
+         *
+         * This function computes the dot product of two matrices by multiplying elements
+         * of the first matrix's rows with the corresponding columns of the second matrix
+         * and summing the results. The resulting matrix is returned as a new Collective object.
+         *
+         * Example:
+         * Matrix A:
+         *   [2.3 3.4 1.2 1.0]
+         *   [1.0 1.0 9.0 2.3]
+         *   [3.2 8.9 2.3 8.9]
+         *
+         * Matrix B:
+         *   [2.3 8.9]
+         *   [1.0 1.0]
+         *   [9.0 2.3]
+         *   [3.2 8.9]
+         *
+         * Resulting Dot Product:
+         *   [22.69 35.53]
+         *   [12.6  27.56]
+         *   [24.07 98.81]
+         *
+         * @note The input matrices must have compatible shapes for dot product, i.e., the
+         *       number of columns in the first matrix must match the number of rows in the second matrix
+         *       or second matrix is a scalar.
+         */
+        template<typename E = double>
+        static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
+        {               
+            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            {
+                //throw ala_exception("Numcy::dot(): Incompatible shapes for dot product: Number of columns in the first matrix does not match the number of rows in the second matrix.");
+                if (!(b.getShape().getN() == 1))
+                {
+                    // Needs exception message...
+                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product...\neither number of columns of the first matrix must match the number of rows of the second matrix,\nor second matrix has to be a scalar.");
+                }
+            }
+            
+            std::function</*E*()*/ Collective<E>()> multiplier_is_scalar_func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
+            {
+                Collective<E> ret;                
+                try 
+                {
+                    E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                    {
+                        ptr[i] = a[i] * b[0];
+                    }
+                    ret = Collective<E>{ptr, a.getShape().copy()};                    
+                }    
+                catch(std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }    
+                
+                return ret;
+            };                        
+            /*
+                Immutable capture list...
+                ----------------------------
+                Originaly this was the lambda's ca[ture list [a, b]. 
+                It captures the variables a and b by value.
+                This means that func has access to the values of a and b as they were when the lambda was created.
+                With the above capture list, I was getting compile time errors...
+                - "error C2662: 'DIMENSIONSOFARRAY Dimensions::getNumberOfRows(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions'"
+                - "error C2662: 'cc_tokenizer::string_character_traits<char>::size_type Dimensions::getNumberOfColumns(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions &'"
+
+                Then I change it to [&a, &b]...
+                ----------------------------------
+                If you need to modify a and b within the lambda, you should capture them by reference using [&a, &b] in the capture list.
+                However, this would require that a and b are mutable in the outer scope.
+             */                        
+            std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
+            {                  
+                cc_tokenizer::allocator<char> alloc_obj;
+                E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
+                /*
+                    TODO, check if it is actually working
+                 */
+                memset(ptr, 0, sizeof(E)*b.shape.getNumberOfColumns());
+                                
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.shape.getNumberOfColumns(); i++)
+                {                    
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.shape.getNumberOfColumns(); j++)
+                    {
+                        ptr[i] = ptr[i] + a[j]*b[b.shape.getNumberOfColumns()*j + i];
+                    }   
+                }
+
+                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+                
+                return ret;
+            };
+           
+           if (b.getShape().getN() == 1)
+           {                   
+                return multiplier_is_scalar_func();
+           }
+           else 
+           {                
+                return func();
+           }
+           //return NULL;
+        }
+        
+        /*
+            Euclidean norm corresponds to the square root of the sum of the absolute squared values of the vector's components
+
+                                    ||u|| = sqrt(u1^2 + u2^2 + u3^2 + .... + (u(n-1))^2 + un^2)
+
+            The notation with two vertical bars ||u|| represents the magnitude or norm of the vector u.
+            In the context of vectors, the magnitude of a vector is the length of the vector in space, 
+            and it is calculated using the square root of the sum of the squares of its components.
+         */
+        /*
+            This function, enorm(), computes the Euclidean norm of a vector of type Collective<E> by iterating
+            over its components, squaring each element, summing these squared values, and returning the square root
+            of the sum as the magnitude.
+
+            Parameters:
+            - x: A vector of elements of type E, representing the input vector.
+
+            Returns:
+            - E: The Euclidean norm of the input vector x.
+
+            Throws:
+            - ala_exception: If any error occurs during the calculation.
+         */
+        template <typename E = double>
+        static E enorm(Collective<E>& x) throw (ala_exception)
+        {
+            E sum = 0;
+
+            try 
+            {  
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+                {                
+                    x[i] = x[i]*x[i];
+
+                    sum = sum + x[i];
+                }
+
+                return sqrt(sum); 
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::enorm() -> ") + e.what());
+            }           
+        }
+                
+        class Spatial
+        {
+            public:
+                class Distance
+                {
+                    public:
+                        /*
+                            The method finds cosine similarity between two vectors.
+                                                       u.v
+                            cosine_similarity =  -----------------
+                                                   ||u|| x ||v||​
+
+
+                                                        OR 
+
+                                                                u * v          
+                            cosine_similarity =  ---------------------------------
+                                                 Numcy::enorm(u) * Numcy::enorm(v)​   
+
+                            Cosine Similarity ranges from -1 to 1...
+                            ->  1 indicates vectors are identical (perfect similarity). 
+                            ->  0 indicates the vectors are orthogonal (no similarity).
+                            -> -1 indicates the vectors are completely opposite (dissimilarity)
+                         */
+                        /*
+                            Parameters:
+                            - u: A vector of elements of type E, representing the first input vector.
+                            - v: A vector of elements of type E, representing the second input vector.
+
+                            Returns:
+                            - E: The cosine similarity value between the two vectors.
+
+                            Throws:
+                            - ala_exception: If any error occurs during the calculation.
+                         */
+                        template <typename E = double>
+                        static E cosine(Collective<E>& u, Collective<E>& v) throw (ala_exception)
+                        {
+                            try 
+                            {
+                                /*
+                                    It computes the dot product of the vectors using Numcy::dot(u, v) and 
+                                    stores the result in a Collective<E> named product
+                                 */
+                                Collective<E> product = Numcy::dot(u, v);
+
+                                //std::cout<< product.getShape().getNumberOfColumns() << product.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << std::endl;
+
+                                //Numcy::enorm(u);
+                                //Numcy::enorm(v);
+
+                                //return product;
+
+                                return ((product[0])/(Numcy::enorm(u)*Numcy::enorm(v)));
+                            }
+                            catch (ala_exception& e)
+                            {
+                                throw ala_exception(cc_tokenizer::String<char>("Numcy::cosine() -> ") + e.what());
+                            }
+                        }
+                };
+
+                class Distance distance;     
+        };
+
+        class Spatial spatial;
+
         class Random
         {
             public:
                 /*
+                    TODO,
                     Make it variadic function
                  */
                 template <typename E = double>
@@ -259,139 +504,7 @@ class Numcy
             
             return Collective<E>{ptr, a.getShape().copy()};
         }
-                
-        /*
-            The product of two matrices can be computed by multiplying elements of the first row of the first matrix with the first column 
-            of the second matrix then, add all the product of elements. Continue this process until each row of the first matrix is multiplied 
-            with each column of the second matrix.
-
-            [2.3 3.4 1.2 1.0] * [2.3  8.9]  = [(2.3*2.3 + 3.4*1.0 + 1.2*9.0 + 1.0*3.2) (2.3*8.9 + 3.4*1.0 + 1.2*2.3 + 1.0*8.9)] = [22.69  35.53]
-                                [1.0  1.0]
-                                [9.0  2.3]
-                                [3.2  8.9]                                           
-         */
-        /**
-         * Calculate the dot product of two matrices represented by Collective objects.
-         *
-         * @tparam E        The element type of the matrices.
-         * @param a         The first input matrix.
-         * @param b         The second input matrix.
-         * @return          A new Collective object representing the result of the dot product.
-         * @throws ala_exception If the matrices have incompatible shapes for dot product.
-         *
-         * This function computes the dot product of two matrices by multiplying elements
-         * of the first matrix's rows with the corresponding columns of the second matrix
-         * and summing the results. The resulting matrix is returned as a new Collective object.
-         *
-         * Example:
-         * Matrix A:
-         *   [2.3 3.4 1.2 1.0]
-         *   [1.0 1.0 9.0 2.3]
-         *   [3.2 8.9 2.3 8.9]
-         *
-         * Matrix B:
-         *   [2.3 8.9]
-         *   [1.0 1.0]
-         *   [9.0 2.3]
-         *   [3.2 8.9]
-         *
-         * Resulting Dot Product:
-         *   [22.69 35.53]
-         *   [12.6  27.56]
-         *   [24.07 98.81]
-         *
-         * @note The input matrices must have compatible shapes for dot product, i.e., the
-         *       number of columns in the first matrix must match the number of rows in the second matrix
-         *       or second matrix is a scalar.
-         */
-        template<typename E = double>
-        static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
-        {               
-            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
-            {
-                //throw ala_exception("Numcy::dot(): Incompatible shapes for dot product: Number of columns in the first matrix does not match the number of rows in the second matrix.");
-                if (!(b.getShape().getN() == 1))
-                {
-                    // Needs exception message...
-                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product...\neither number of columns of the first matrix must match the number of rows of the second matrix,\nor second matrix has to be a scalar.");
-                }
-            }
             
-            std::function</*E*()*/ Collective<E>()> multiplier_is_scalar_func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
-            {
-                Collective<E> ret;                
-                try 
-                {
-                    E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
-                    {
-                        ptr[i] = a[i] * b[0];
-                    }
-                    ret = Collective<E>{ptr, a.getShape().copy()};                    
-                }    
-                catch(std::length_error& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
-                catch (std::bad_alloc& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
-                catch (ala_exception& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what()));
-                }    
-                
-                return ret;
-            };                        
-            /*
-                Immutable capture list...
-                ----------------------------
-                Originaly this was the lambda's ca[ture list [a, b]. 
-                It captures the variables a and b by value.
-                This means that func has access to the values of a and b as they were when the lambda was created.
-                With the above capture list, I was getting compile time errors...
-                - "error C2662: 'DIMENSIONSOFARRAY Dimensions::getNumberOfRows(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions'"
-                - "error C2662: 'cc_tokenizer::string_character_traits<char>::size_type Dimensions::getNumberOfColumns(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions &'"
-
-                Then I change it to [&a, &b]...
-                ----------------------------------
-                If you need to modify a and b within the lambda, you should capture them by reference using [&a, &b] in the capture list.
-                However, this would require that a and b are mutable in the outer scope.
-             */                        
-            std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
-            {                  
-                cc_tokenizer::allocator<char> alloc_obj;
-                E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
-                /*
-                    TODO, check if it is actually working
-                 */
-                memset(ptr, 0, sizeof(E)*b.shape.getNumberOfColumns());
-                                
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.shape.getNumberOfColumns(); i++)
-                {                    
-                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.shape.getNumberOfColumns(); j++)
-                    {
-                        ptr[i] = ptr[i] + a[j]*b[b.shape.getNumberOfColumns()*j + i];
-                    }   
-                }
-
-                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
-                
-                return ret;
-            };
-           
-           if (b.getShape().getN() == 1)
-           {                   
-                return multiplier_is_scalar_func();
-           }
-           else 
-           {                
-                return func();
-           }
-           //return NULL;
-        }
-
         /*
             Output array, element-wise exponential of x. This is a scalar if @a is a scalar
          */
