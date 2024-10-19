@@ -170,7 +170,7 @@ class Numcy
             - ala_exception: If any error occurs during the calculation.
          */
         template <typename E = double>
-        static E enorm(Collective<E>& x) throw (ala_exception)
+        static E enorm(Collective<E> x) throw (ala_exception)
         {
             E sum = 0;
 
