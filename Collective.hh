@@ -40,11 +40,18 @@ struct Collective
         Collective (E* v, DIMENSIONS like)
         {
             try 
-            {                    
-                ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+            {   
+                if (v != NULL) 
+                {                
+                    ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                    {
+                        ptr[i] = v[i];                
+                    }
+                }
+                else
                 {
-                    ptr[i] = v[i];                
+                    ptr = NULL;
                 }
             }
             catch (std::length_error& e)
@@ -100,25 +107,57 @@ struct Collective
             shape = *(like.copy());
             reference_count = count;
         }
-
-        /*Collective (E *v, Dimensions *like) : ptr(v), shape(*like), reference_count(0)*/
+        
+        /**
+        /* @brief Constructs a `Collective` object, allocating memory for its elements based on the
+        *         provided `Dimensions` object. The constructor also ensures that the memory is properly
+        *         initialized from a given array of elements and handles any exceptions that may arise 
+        *         during allocation.
+        *
+        * @tparam E The type of elements to be stored in the `Collective` object.
+        * @param v Pointer to the source array from which the elements will be copied. If `v` is `NULL`, 
+        *          no allocation is performed, and `ptr` is set to `NULL`.
+        * @param like A pointer to a `Dimensions` object, which provides the necessary shape and size 
+        *             information for the allocation. Must not be `NULL`.
+        * 
+        * @throws ala_exception If an allocation error occurs (e.g., due to exceeding memory limits),
+        *         this constructor catches the standard exceptions (`std::length_error`
+        *         and `std::bad_alloc`) and wraps them in an `ala_exception` with a detailed 
+        *         error message.
+        *
+        * @details 
+        * - The constructor first checks that the `v` pointer is not `NULL`. 
+        * - If `v` is valid, it attempts to allocate memory for `ptr` based on the size specified in 
+        *   the `like` object. Elements are copied from `v` to the newly allocated array.
+        * - If allocation fails due to a length or memory error, an `ala_exception` is thrown.
+        * - If `v` is `NULL`, the `ptr` pointer is set to `NULL` to indicate no allocation.
+        * - The `shape` member is initialized by copying the dimensions from `like`.
+        * - The reference count is set to 0.
+        */
         Collective (E *v, Dimensions* like)
         { 
-            try 
-            {                    
-                ptr = cc_tokenizer::allocator<E>().allocate(like->getN());
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like->getN(); i++)
+            //if (v != NULL)
+            {
+                try 
+                {                    
+                    ptr = cc_tokenizer::allocator<E>().allocate(like->getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like->getN(); i++)
+                    {
+                        ptr[i] = v[i];                
+                    }
+                }
+                catch (std::length_error& e)
                 {
-                    ptr[i] = v[i];                
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
             }
-            catch (std::length_error& e)
+            //else
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }
-            catch (std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                //ptr = NULL;
             }
             
             shape = *(like->copy());
@@ -142,7 +181,7 @@ struct Collective
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < /*(other.ptr != NUL) &&*/ other.getShape().getN(); i++)
             {
                 ptr[i] = other[i];
             }
@@ -297,6 +336,13 @@ struct Collective
             }            
         }
 
+        Collective<E>& operator= (E* p)
+        {
+            this->ptr = p;
+
+            return *this;
+        }
+
         /**
          * @brief Copy Assignment Operator
          * 
@@ -307,7 +353,7 @@ struct Collective
          * @return A reference to the current instance after assignment.
          */
         Collective& operator= (Collective &other) throw (ala_exception)
-        {            
+        {               
             // Check for self-assignment
             if (this == &other)
             {
@@ -338,13 +384,15 @@ struct Collective
 
             reference_count = 0;
 
-            try 
+            if (other.ptr != NULL)
             {
+            try 
+            {                                                
                 ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
                 {
                     ptr[i] = other[i];
-                }
+                }                                
             }
             catch (std::length_error& e)
             {
@@ -353,6 +401,11 @@ struct Collective
             catch (std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
+            }
+            }
+            else
+            {
+                ptr = NULL;
             }
             
             //shape = other.shape;
