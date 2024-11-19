@@ -481,7 +481,7 @@ struct Collective
         }*/
 
         template <typename F = double>
-        Collective<E> operator* (F n) throw (ala_exception)
+        Collective<F> operator* (F n) throw (ala_exception)
         {                        
             F* ptr = NULL;
 
@@ -499,7 +499,7 @@ struct Collective
                 ptr[i] = (*this)[i] * n;
             }
 
-            return Collective<E>{ptr, getShape().copy()};
+            return Collective<F>{ptr, getShape().copy()};
         }
 
         // Overloading the binary * operator for multiplying two Collective instances

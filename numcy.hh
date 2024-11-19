@@ -3,7 +3,7 @@
     Q@Khaa.pk
  */
 
-//#include "header.hh"
+#include "header.hh"
 
 #ifndef REPLIKA_PK_NUMCY_HEADER_HH
 #define REPLIKA_PK_NUMCY_HEADER_HH
@@ -369,7 +369,7 @@ class Numcy
          */
         template <typename E = float, typename OutType = float>
         static OutType* arange(E start /*= 0*/, E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = {1, 1, NULL, NULL}) throw (ala_exception)
-        {   
+        {               
             if ((stop - start)/step > like.getN())
             {   
                 unsigned int num = (stop - start)/step;
@@ -379,8 +379,22 @@ class Numcy
             cc_tokenizer::allocator<char> alloc_obj;
             cc_tokenizer::string_character_traits<char>::size_type i = 0;
             E current = start;
-            OutType* ptr = reinterpret_cast<OutType*>(alloc_obj.allocate(sizeof(OutType)*like.getN()));                                   
+            OutType* ptr = NULL;
 
+            try
+            {
+                //ptr = reinterpret_cast<OutType*>(alloc_obj.allocate(sizeof(OutType)*like.getN())); 
+                ptr = cc_tokenizer::allocator<OutType>().allocate(like.getN());
+            }
+            catch(const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::arange() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch(const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::arange() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+                         
             while (i < like.getN() && current  < stop)
             {                
                 ptr[i] = current;
@@ -390,7 +404,7 @@ class Numcy
                 i++;
             }    
                                                 
-            return (OutType*) ptr;            
+            return /*(OutType*)*/ ptr;            
         }
         
         template<typename E>
@@ -510,7 +524,7 @@ class Numcy
          */
         template<typename E>
         static E* exp(E* a, cc_tokenizer::string_character_traits<char>::size_type n) throw (ala_exception)
-        {             
+        {                         
             E* ret = NULL; 
             try
             {                                  
@@ -531,7 +545,7 @@ class Numcy
 
         template<typename E>
         static Collective<E> exp(Collective<E>& a) throw (ala_exception)
-        {
+        {            
             if (!a.getShape().getN())
             {
                 throw ala_exception("Numcy::exp() Error: Malformed shape of the array received as one of the arguments.");
@@ -891,12 +905,25 @@ class Numcy
     
         template<typename E>
         static struct Collective<E> sin(Collective<E> x) 
-        {
-            cc_tokenizer::allocator<char> alloc_obj;
+        {                        
+            E* ptr = NULL;             
+            Collective<E> ret; 
 
-            struct Collective<E> ret = {reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*x.shape.getN())), {x.shape.getNumberOfColumns(), x.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+            try 
+            {
+                ptr = cc_tokenizer::allocator<E>().allocate(x.getShape().getN());
+                ret = Collective<E>{ptr, *(x.getShape().copy())};
+            }
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));\
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));\
+            }
             
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.shape.getN(); i++)
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
             {                
                 ret[i] = std::sin(x[i]);
             }
