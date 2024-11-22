@@ -264,6 +264,8 @@ class Numcy
                 /*
                     TODO,
                     Make it variadic function
+
+                    Generates random numbers following a normal distribution with a specified mean and standard deviation, and it returns an object of type Collective<E>. 
                  */
                 template <typename E = double>
                 static Collective<E> randn(DIMENSIONS& like) throw (ala_exception)
@@ -803,7 +805,10 @@ class Numcy
         {
             if (!((m1.getShape().getNumberOfColumns() <= m2.getShape().getNumberOfColumns()) && (m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays() <= m2.getShape().getDimensionsOfArray().getNumberOfInnerArrays())))
             {
-                throw ala_exception("Numcy::reshape() Error: Reshape operation failed. Incompatible dimensions. For reshape to be successful, Matrix 1 must have: - Less than or equal columns compared to Matrix 2. - Less than or equal inner arrays compared to Matrix 2.");
+                cc_tokenizer::String<char> message1("Numcy::reshape() Error: Reshape operation failed. Incompatible dimensions. For reshape to be successful, Matrix 1 must have: - Less than or equal columns compared to Matrix 2. - Less than or equal inner arrays compared to Matrix 2. ");
+                cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("m1(") + cc_tokenizer::String<char>(m1.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>("r) ") + cc_tokenizer::String<char>("m2(") + cc_tokenizer::String<char>(m2.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m2.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>("r)");
+
+                throw ala_exception(message1 + message2);
             }
 
             E* ptr = NULL;
