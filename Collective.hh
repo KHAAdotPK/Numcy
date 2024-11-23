@@ -639,12 +639,13 @@ struct Collective
       *
       * @todo Extend this function to handle more complex shapes, not just simple linear slices.
     */
-    E* slice(cc_tokenizer::string_character_traits<char>::size_type i, cc_tokenizer::string_character_traits<char>::size_type n) throw(ala_exception)
+    /*E**/ Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, cc_tokenizer::string_character_traits<char>::size_type n) throw(ala_exception)
     {
         E* slice_ptr = NULL;
+        Collective<E> ret;
 
         if (!(n > 0))
-        {
+        {            
             throw ala_exception("Collective::slice() Error: The slice length 'n' must be greater than zero.");
         }
 
@@ -661,6 +662,8 @@ struct Collective
             {
                 slice_ptr[j] = ptr[i + j];
             }
+
+            ret = Collective<E>{slice_ptr, DIMENSIONS{n, 1, NULL, NULL}};
         }
         catch(const std::bad_alloc& e)
         {
@@ -671,7 +674,8 @@ struct Collective
             throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what())); 
         }
         
-        return slice_ptr;
+        //return slice_ptr;
+        return ret;
     }
 };
 #endif
