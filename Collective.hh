@@ -515,6 +515,147 @@ struct Collective
             }                    
         }
 
+    template <typename F = double>
+    Collective<E> operator / (Collective<F>& divisor) throw (ala_exception)
+    {
+        E* ptr = NULL;
+        
+        if (!(*this).getShape().getN())
+        {
+            throw ala_exception("Collective::operator / () Error: Malformed shape of the array received as dividend.");
+        }
+
+        try
+        {
+            ptr = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
+        }
+        catch (std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator / () Error: ") + e.what());    
+        }
+        catch (std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator / () Error: ") + e.what());
+        }
+        
+        if (divisor.getShape().getN() == 1)
+        {
+            if (divisor[0] == 0)
+            {
+                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                ptr = NULL;
+
+                throw ala_exception("Collective::operator / () Error: divide by zero is not allowed.");
+            }
+
+            try
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
+                {
+                    ptr[i] = (*this)[i] / ((E)divisor[0]);            
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                ptr = NULL;
+
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator / () -> ") + e.what());
+            }            
+        }
+        else if ((*this).getShape() == divisor.getShape())
+        {
+            try 
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < divisor.getShape().getN(); i++)
+                {
+                    ptr[i] = (*this)[i] / (E)(divisor[i]);
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                ptr = NULL;
+
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator / () -> ") + e.what()); 
+            }   
+        }
+        else 
+        {
+            throw ala_exception("Collective::operator / () Error: Cannot divide matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
+        }
+
+        return Collective<E>{ptr, *((*this).getShape().copy())};
+    }
+
+    template <typename F = double>
+    Collective<E> operator- (Collective<F>& subtrahend) throw (ala_exception)
+    {   
+        E* ptr = NULL;
+
+        if (!(*this).getShape().getN())
+        {
+            throw ala_exception("Collective::operator - () Error: Malformed shape of the array received as minuend.");
+        }
+
+        try
+        {
+            ptr = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
+        }
+        catch (std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());    
+        }
+        catch (std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());
+        }
+
+        if (subtrahend.getShape().getN() == 1)
+        {
+            try
+            {                                        
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
+                {
+                    ptr[i] = (*this)[i] - (E)(subtrahend[0]);
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                ptr = NULL;
+
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () -> ") + e.what());
+            }
+        }
+        else if ((*this).getShape() == subtrahend.getShape())
+        {
+            try
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < subtrahend.getShape().getN(); i++)
+                {
+                    ptr[i] = (*this)[i] - (E)(subtrahend[i]);
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                ptr = NULL;
+
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
+            }
+        }
+        else
+        {
+            cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+            ptr = NULL;
+
+            throw ala_exception("Collective::operator-() Error: Cannot subtract matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
+        }
+
+        return Collective<E>{ptr, *((*this).getShape().copy())};
+    }
+
     // Overloading the binary * operator for multiplying a Collective by an array of type E; 
     
     /*
