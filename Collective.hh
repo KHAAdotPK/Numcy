@@ -761,6 +761,44 @@ struct Collective
         return ret;
     }
 
+    Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, DIMENSIONS& dim) throw(ala_exception)
+    {
+        E* slice_ptr;
+        Collective<E> ret;
+
+        if (!dim.getN())
+        {
+            throw ala_exception("Collective::slice() Error: The slice length must be greater than zero.");
+        }
+
+        if ((i + dim.getN()) > shape.getN())
+        {
+            throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data.");
+        }
+
+        try
+        {
+            slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
+
+            for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < dim.getN(); j++)
+            {
+                slice_ptr[j] = ptr[i + j];
+            }
+
+            ret = Collective<E>{slice_ptr, *dim.copy()};
+        }
+        catch(const std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));                
+        }
+        catch(const std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+
+        return ret;
+    }
+
     /**
       * @brief Slices a portion of data starting from a given index and for a specified length.
       * 
