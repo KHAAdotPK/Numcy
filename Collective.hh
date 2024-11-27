@@ -656,6 +656,18 @@ struct Collective
         return Collective<E>{ptr, *((*this).getShape().copy())};
     }
 
+    bool operator== (Collective<E>& other)
+    {
+        bool ret = false;
+
+        if ((ptr == other.ptr) && (getShape() == other.getShape()))
+        {
+            ret = true;
+        }
+
+        return ret;
+    }
+
     // Overloading the binary * operator for multiplying a Collective by an array of type E; 
     
     /*
@@ -669,8 +681,104 @@ struct Collective
         
         std::cout<<"getN = "<<this->shape.getN()<<std::endl;         
     }
-     */    
-    Collective<E> operator+ (Collective<E>& other) 
+     */
+
+    /**
+     * @brief Overloaded addition operator for combining two Collective objects.
+     * 
+     * This method performs an element-wise addition of two Collective instances. 
+     * If the shape of the `other` Collective has a single element, the value of that 
+     * element is broadcast and added to all elements of the current Collective. 
+     * Otherwise, the two Collectives must have identical shapes for the addition 
+     * to be performed successfully.
+     * 
+     * @tparam E The type of elements stored in the Collective.
+     * @param other A reference to another Collective<E> object to be added.
+     * @return Collective<E> A new Collective object representing the result of the addition.
+     * 
+     * @throws ala_exception If:
+     *         - The shape of `other` is invalid (zero elements).
+     *         - The shapes of the two Collectives are incompatible.
+     *         - Memory allocation fails during the creation of the result.
+     *         - Any length or size errors occur.
+     * 
+     * @note The left and right operands can be the same instance. 
+     *       All necessary checks are performed to ensure safe and meaningful operations.
+     */
+    Collective<E> operator+ (Collective<E>& other) throw (ala_exception)
+    {
+        /*
+            No need, left and right oprands can be same instances
+         */
+        /*if (*this == other)
+        {
+            return *this;
+        }*/
+
+        E* local_ptr = NULL;
+        Collective<E> ret;
+
+        if (!(other.getShape().getN() > 0))
+        {
+            throw ala_exception("Collective::operator + () Error: The 'other' Collective has an invalid shape with zero elements.");
+        }
+        
+        if (other.getShape().getN() == 1)
+        {
+            try
+            {
+                local_ptr = cc_tokenizer::allocator<E>().allocate(getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getN(); i++)
+                {
+                    local_ptr[i] = (*this)[i] + other[0];
+                }
+                ret = Collective<E>{local_ptr, *(getShape().copy())};
+            }
+            catch (const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () -> ") + e.what());
+            }
+        }
+        else if (getShape() == other.getShape())
+        {
+            try
+            {
+                local_ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                {
+                    local_ptr[i] = (*this)[i] + other[i];
+                }
+                ret = Collective<E>{local_ptr, *(other.getShape().copy())};
+            }
+            catch (const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());                
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () -> ") + e.what());
+            }
+        }
+        else
+        {
+            throw ala_exception("Collective::operator + () Error: The shapes of the two collectives are incompatible for addition.");
+        }
+
+        return ret;
+    } 
+    Collective<E> operator_plus (Collective<E>& other) 
     {
         cc_tokenizer::allocator<char> alloc_obj;
 
@@ -704,7 +812,7 @@ struct Collective
                     dim_head = reinterpret_cast<DIMENSIONS_PTR>(alloc_obj.allocate(sizeof(DIMENSIONS)));
                     current = dim_head;
 
-                    *current = {0, 0, NULL, NULL};    
+                    *current = DIMENSIONS{0, 0, NULL, NULL};    
 
                     //current->next = NULL;
                     //current->prev = NULL;                    
@@ -729,7 +837,7 @@ struct Collective
             //ret.shape = *dim_head;
             //ret.ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a.ptr[this->shape.getNumberOfLinks()] + b.ptr[other.shape.getNumberOfLinks()])));
 
-            ret = {reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]))), *dim_head};
+            ret = Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]))), *dim_head};
         
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
             {

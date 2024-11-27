@@ -23,7 +23,7 @@
  */
 typedef struct Dimensions
 {    
-    private:
+    //private:
         cc_tokenizer::string_character_traits<char>::size_type columns;
         cc_tokenizer::string_character_traits<char>::size_type rows;
         struct Dimensions* next;
