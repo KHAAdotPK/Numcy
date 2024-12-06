@@ -488,16 +488,29 @@ struct Collective
             try
             {
                 ptr = cc_tokenizer::allocator<F>().allocate(getShape().getN());
+
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < shape.getN(); i++)
+                {
+                    ptr[i] = (*this)[i] * n;
+                }
             }
-            catch (std::bad_alloc& e)
+            catch (const std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));    
             }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }   
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < shape.getN(); i++)
+            /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < shape.getN(); i++)
             {
                 ptr[i] = (*this)[i] * n;
-            }
+            }*/
 
             return Collective<F>{ptr, getShape().copy()};
         }
@@ -680,6 +693,30 @@ struct Collective
         }
         
         std::cout<<"getN = "<<this->shape.getN()<<std::endl;         
+    }
+     */
+    
+    /*
+    template <typename F = double>
+    Collective<F> operator+ (F a) throw (ala_exception)
+    {   
+        Collective<F> ret;
+
+        try
+        {
+            F* ptr = cc_tokenizer::allocator<F>().allocate(1);
+            ret = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+        }
+        catch(const std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ () Error: ") + cc_tokenizer::String<char>(e.what()));
+        }
+        catch (const std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ () Error: ") + cc_tokenizer::String<char>(e.what()));
+        }
+
+        return ret;         
     }
      */
 

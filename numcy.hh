@@ -539,7 +539,7 @@ class Numcy
 
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
             {
-                ret[i] = ::exp(a[i]);
+                ret[i] = std::exp(a[i]);
             }
             
             return ret;
@@ -570,7 +570,7 @@ class Numcy
 
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
             {
-                ptr[i] = ::exp(a[i]);
+                ptr[i] = std::exp(a[i]);
             }
 
             return Collective<E>{ptr, a.getShape().copy()};
@@ -837,6 +837,65 @@ class Numcy
             }
 
             return Collective<E>{ptr, m2.getShape().copy()};
+        }
+
+        /**
+         * @brief Computes the sigmoid function element-wise for the input `Collective`.
+         *
+         * The sigmoid function is defined as:
+         *      sigmoid(x) = 1 / (1 + exp(-x))
+         * This implementation calculates the sigmoid function for each element in the
+         * input `Collective` and returns a new `Collective` containing the results.
+         *
+         * @tparam E The data type of the elements in the `Collective`. Defaults to `double`.
+         * @param u A `Collective<E>` object representing the input data.
+         *          - Assumes `u` is well-formed and supports element-wise arithmetic operations.
+         * @return A `Collective<E>` containing the sigmoid values of the corresponding elements in `u`.
+         * @throws ala_exception If memory allocation, length mismatch, or other computational errors occur.
+         *          - The exception provides detailed context about the error source.
+         * 
+         * @note This method creates intermediate `Collective` objects during computation.
+         *       Ensure sufficient memory is available for larger inputs.
+         *
+         * Example:
+         * ```cpp
+         * Collective<double> input = {0.0, 1.0, -1.0};
+         * Collective<double> result = Numcy::sigmoid(input);
+         * // result will contain: {0.5, 0.731058, 0.268941}
+         * ```
+         */
+        template <typename E = double>
+        static Collective<E> sigmoid(Collective<E>& u) throw (ala_exception)
+        {  
+            Collective<E> u_; // The negation of the input u
+            Collective<E> u_e; // The exponential of each element in u_ using Numcy::exp<E>
+            Collective<E> u_e_plusOne; // The result of Adding 1 to each element of u_e 
+            Collective<E> oneDivided_by_u_e_plusOne; // The element-wise reciprocal of u_e_plusOne
+
+            try 
+            {                        
+                u_ = u * (static_cast<E>(-1));
+                u_e = Numcy::exp<E>(u_);
+                E* ptr = cc_tokenizer::allocator<E>().allocate(1);
+                *ptr = static_cast<E>(1);
+                Collective<E> plusOne = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+                u_e_plusOne = u_e + plusOne;
+                oneDivided_by_u_e_plusOne = Numcy::ones<E>(*u.getShape().copy()) / u_e_plusOne;                
+            }
+            catch (const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sigmoid() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sigmoid() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sigmoid() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+
+            return oneDivided_by_u_e_plusOne;
         }
 
         /*
