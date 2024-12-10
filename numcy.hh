@@ -995,7 +995,41 @@ class Numcy
             return ret;
         }
 
-        template<typename E>
+        template <typename E>
+        static Collective<E> subtract(Collective<E>& x1, E x) throw (ala_exception)
+        {
+            if (!x1.getShape().getN())
+            {
+                throw ala_exception("Numcy::subtract() Error: Vector provided as minuend is empty.");
+            }
+
+            E* ptr = NULL;
+
+            try 
+            {               
+                ptr = cc_tokenizer::allocator<E>().allocate(x1.getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x1.getShape().getN(); i++)
+                {
+                    ptr[i] = x1[i] - x;
+                }
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));
+            } 
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));                
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+
+            return Collective<E>{ptr, x1.getShape().copy()};
+        }
+
+        template <typename E>
         static Collective<E> subtract(Collective<E>& x1, Collective<E>& x2) throw (ala_exception)
         {            
             /*if (!(x1.getShape() == x2.getShape()))
