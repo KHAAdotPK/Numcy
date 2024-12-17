@@ -892,7 +892,7 @@ class Numcy
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::sigmoid() Error: ") + cc_tokenizer::String<char>(e.what()));
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sigmoid() -> ") + cc_tokenizer::String<char>(e.what()));
             }
 
             return oneDivided_by_u_e_plusOne;
