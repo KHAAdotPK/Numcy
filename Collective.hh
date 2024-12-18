@@ -601,6 +601,65 @@ struct Collective
         return Collective<E>{ptr, *((*this).getShape().copy())};
     }
 
+    /**
+     * @brief Overloads the subtraction operator for the Collective class.
+     *
+     * This method performs element-wise subtraction of a given subtrahend 
+     * from each element of the current Collective instance.
+     *
+     * @tparam E The type of elements stored in the Collective instance.
+     * 
+     * @throws ala_exception Thrown if memory allocation fails (std::bad_alloc)
+     *         or if the operation causes a length error (std::length_error).
+     *
+     * @return Collective<E> A new Collective instance containing the results of 
+     *         the subtraction, with the same shape as the original.
+     *
+     * @details 
+     * - Allocates memory dynamically for storing the results of the subtraction.
+     * - Handles exceptions arising during memory allocation or other potential errors.
+     * - Iterates over the elements of the Collective, subtracting the specified 
+     *   subtrahend from each element and storing the results in the allocated memory
+     *
+     * Example Usage:
+     * @code
+     * Collective<int> a = ...; // Initialize with some values
+     * int subtrahend = 5;
+     * Collective<int> result = a - subtrahend;
+     * @endcode
+     */
+    template <typename F = double>
+    Collective<E> operator- (F subtrahend) throw (ala_exception)
+    {
+        // this-> is your receiver object
+        if (!(*this).getShape().getN())
+        {
+            throw ala_exception("Collective::operator - () Error: Malformed shape of the array received as minuend.");
+        }
+
+        E* ptr = NULL;
+
+        try
+        {
+            ptr = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
+        }
+        catch (std::bad_alloc& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());    
+        }
+        catch (std::length_error& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());
+        }
+
+        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
+        {
+            ptr[i] = (*this)[i] - (E)subtrahend;
+        }
+
+        return Collective<E>{ptr, *((*this).getShape().copy())};
+    }
+
     template <typename F = double>
     Collective<E> operator- (Collective<F>& subtrahend) throw (ala_exception)
     {   
