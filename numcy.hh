@@ -350,6 +350,104 @@ class Numcy
             
         class Random random;
 
+        /* Linear Algebra */
+        class LinAlg
+        {
+            public:
+                template <typename E = double>
+                static Collective<E> norm(Collective<E>& a, AXIS axis = AXIS_NONE) throw (ala_exception)
+                {                    
+                    Collective<E> ret;
+                    
+                    if (!a.getShape().getN())
+                    {
+                        throw ala_exception("Numcy::LinAlg::norm() Error: The array received as an argument is empty.");
+                    }
+
+                    switch (axis)
+                    {
+                        case AXIS_NONE:
+                        {
+                            if (a.getShape().getNumberOfLinks() > 1)
+                            {
+                                throw ala_exception("Numcy::LinAlg::norm() Error: When \"axis\" is AXIS_NONE, \"a\" must be 1-D or 2-D array.");
+                            }
+                            try
+                            {                                                                  
+                                ret = Numcy::zeros<E>(DIMENSIONS{1, 1, NULL, NULL});
+
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                                {
+                                    ret[0] = ret[0] + a[i]*a[i];
+                                }
+
+                                ret[0] = std::sqrt(ret[0]);
+                            }                            
+                            catch(ala_exception& e)
+                            {
+                                throw ala_exception(cc_tokenizer::String<char>("Numcy::LinAlg::norm() -> ") + cc_tokenizer::String<char>(e.what())); 
+                            }                            
+                        }
+                        break;
+
+                        case AXIS_COLUMN:
+                        {
+                            try
+                            {                            
+                                ret = Numcy::zeros<E>(DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL});
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                                {
+                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                                    {
+                                        ret[i] = ret[i] + a[j*a.getShape().getNumberOfColumns() + i]*a[j*a.getShape().getNumberOfColumns() + i];
+                                    }
+
+                                    ret[i] = std::sqrt(ret[i]);
+                                }
+                            }
+                            catch(ala_exception& e)
+                            {
+                                throw ala_exception(cc_tokenizer::String<char>("Numcy::LinAlg::norm() -> ") + cc_tokenizer::String<char>(e.what())); 
+                            }
+                        }
+                        break;
+
+                        case AXIS_ROWS:
+                        {
+                            try
+                            {                                  
+                                ret = Numcy::zeros<E>(DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL});
+                                
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                                {
+                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                                    {
+                                        ret[i] = ret[i] + a[i*a.getShape().getNumberOfColumns() + j]*a[i*a.getShape().getNumberOfColumns() + j];
+                                    }
+                                 
+                                    ret[i] = std::sqrt(ret[i]);
+                                }                                
+                            }                            
+                            catch(ala_exception& e)
+                            {
+                                throw ala_exception(cc_tokenizer::String<char>("Numcy::LinAlg::norm() -> ") + cc_tokenizer::String<char>(e.what())); 
+                            }  
+                        }
+                        break;
+                                            
+                        default:
+                        {
+                            throw ala_exception("Numcy::LinAlg::norm() Error: Invalid axis value.");
+                        }
+                        break;
+                    }
+                                                                                                    
+                    return ret;   
+                }                           
+        };
+
+        class LinAlg linalg;
+
         /*
             @stop, integer or real; end of interval. The interval does not include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
             @step, integer or real, optional; spacing between values. For any output out, this is the distance between two adjacent values, out[i+1] - out[i]. The default step size is 1. If step is specified as a position argument, start must also be given.
