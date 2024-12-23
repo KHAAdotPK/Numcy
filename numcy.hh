@@ -288,16 +288,27 @@ class Numcy
                         throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn() Error: ") + cc_tokenizer::String<char>(e.what()));
                     }
 
-                    std::random_device rd{};
-                    std::mt19937 gen{rd()};
+/*
+static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_real_distribution<> dis(-0.5, 0.5);
+    return dis(gen);
 
+*/
+
+                    std::random_device rd{};
+                    std::mt19937 gen{rd()}; // Uses uniform initialization (using curly braces {})
+                    //std::mt19937 gen(rd()); // Uses direct initialization (using parentheses ())                    
                     // values near the mean are the most likely
                     // standard deviation affects the dispersion of generated values from the mean
                     std::normal_distribution<> nd{NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION};
+                    
+                    /*std::uniform_real_distribution<> dis(-0.5, 0.5);*/
 
                     for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
                     {
                         ptr[i] = nd(gen);                        
+                        /*ptr[i] = dis(gen);*/
                     }
 
                     return Collective<E>{ptr, like.copy()};
