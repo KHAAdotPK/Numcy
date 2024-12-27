@@ -86,22 +86,29 @@ struct Collective
          */
         /*Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) : ptr(v), shape(like), reference_count(count)*/
         Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) 
-        {            
-            try 
-            {                    
-                ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+        {   
+            if (v != NULL)
+            {        
+                try 
+                {                    
+                    ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                    {
+                        ptr[i] = v[i];                
+                    }
+                }
+                catch (std::length_error& e)
                 {
-                    ptr[i] = v[i];                
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
             }
-            catch (std::length_error& e)
+            else
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }
-            catch (std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                ptr = NULL;
             }
             
             shape = *(like.copy());
@@ -136,7 +143,7 @@ struct Collective
         */
         Collective (E *v, Dimensions* like)
         { 
-            //if (v != NULL)
+            if (v != NULL)
             {
                 try 
                 {                    
@@ -155,9 +162,9 @@ struct Collective
                     throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
             }
-            //else
+            else
             {
-                //ptr = NULL;
+                ptr = NULL;
             }
             
             shape = *(like->copy());
@@ -352,7 +359,7 @@ struct Collective
          * @param other The Collective instance to be assigned from.
          * @return A reference to the current instance after assignment.
          */
-        Collective& operator= (Collective &other) throw (ala_exception)
+        Collective<E>& operator= (Collective<E>& other) throw (ala_exception)
         {               
             // Check for self-assignment
             if (this == &other)
@@ -386,26 +393,34 @@ struct Collective
 
             if (other.ptr != NULL)
             {
-            try 
-            {                                                
-                ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                try 
+                {                                                
+                    ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                    {
+                        ptr[i] = other[i];
+                    }
+
+                    //shape = *(other.getShape().copy());                                
+                }
+                catch (std::length_error& e)
                 {
-                    ptr[i] = other[i];
-                }                                
-            }
-            catch (std::length_error& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
-            }
-            catch (std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
-            }
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
+                }
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::operator = () -> ") + cc_tokenizer::String<char>(e.what()));
+                }
             }
             else
             {
                 ptr = NULL;
+                
+                //shape = DIMENSIONS{0, 0, NULL, NULL};  
             }
             
             //shape = other.shape;
@@ -965,6 +980,133 @@ struct Collective
         return ret;
     }
 
+    /**
+     * @brief Extracts a slice from the Collective object based on the specified axis and dimensions.
+     * 
+     * This function provides slicing capabilities for a Collective object along different axes.
+     * It can handle two main cases:
+     * - `AXIS_NONE`: Extracts a contiguous slice from the Collective object.
+     * - `AXIS_COLUMN`: Extracts a slice along the column axis (currently limited to specific cases).
+     * 
+     * @tparam E The type of the elements in the Collective.
+     * 
+     * @param i The starting index for the slice.
+     * @param dim The dimensions of the slice to be extracted. Must have a non-zero length.
+     * @param axis The axis along which to extract the slice. Defaults to `AXIS_NONE`.
+     * 
+     * @return A new `Collective<E>` object containing the extracted slice.
+     * 
+     * @throws ala_exception If:
+     * - `dim.getN()` is zero.
+     * - The slice range exceeds the bounds of the available data for the specified axis.
+     * - Memory allocation fails while extracting the slice.
+     * - Other length errors occur during operation.
+     * 
+     * @note Memory is dynamically allocated for the slice during extraction and 
+     *       deallocated immediately after the slice is copied into the return object.
+     * 
+     * @details 
+     * - For `AXIS_NONE`: A contiguous range of elements is extracted from index `i`.
+     * - For `AXIS_COLUMN`: Elements are extracted from the column axis, with 
+     *   consideration of the structure of the Collective's internal storage.
+     * 
+     * Example Usage:
+     * ```cpp
+     * DIMENSIONS dim = ...; // Initialize dimensions
+     * Collective<int> coll = ...; // Initialize a Collective object
+     * try {
+     *     Collective<int> slice = coll.slice(0, dim, AXIS_NONE);
+     *     // Use the sliced Collective
+     * } catch (const ala_exception& e) {
+     *     std::cerr << e.what() << std::endl;
+     * }
+     * ```
+     */
+    Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, DIMENSIONS& dim, AXIS axis = AXIS_NONE) throw(ala_exception)
+    {
+        E* slice_ptr;
+        Collective<E> ret;
+
+        if (!dim.getN())
+        {
+            throw ala_exception("Collective::slice() Error: The slice length must be greater than zero.");
+        }
+
+        switch (axis)
+        {
+            case AXIS_NONE:
+            {
+                if ((i + dim.getN()) > getShape().getN())
+                {
+                    throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data for \"AXIS_NONE\".");
+                }
+
+                try
+                {
+                    slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
+
+                    for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < dim.getN(); j++)
+                    {
+                        slice_ptr[j] = ptr[i + j];
+                    }
+
+
+                    ret = Collective<E>{slice_ptr, *(dim.copy())};
+
+                    cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
+
+                    slice_ptr = NULL;
+                }
+                catch(const std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+                catch(const std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+            }
+            break;
+            case AXIS_COLUMN:
+            {                
+                /*
+                    At the moment, we are only considering the case where the slice is along the column axis 
+                 */
+                if (dim.getN() > getShape().getDimensionsOfArray().getNumberOfInnerArrays() || i > getShape().getNumberOfColumns())
+                {
+                    throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data for \"AXIS_COLUMN\".");
+                }
+                                
+                try
+                {
+                    slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());                    
+                    for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                    {
+                        slice_ptr[j] = ptr[i + j*getShape().getNumberOfColumns()];
+                    }
+                                        
+                    ret = Collective<E>{slice_ptr, *(dim.copy())};
+                                        
+                    cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
+
+                    slice_ptr = NULL;
+                }
+                catch(const std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+                catch (const std::length_error& e)
+                {
+                     throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));  
+                }              
+            }
+            break;
+        }
+
+        return ret;
+    }
+
+    /*
     Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, DIMENSIONS& dim) throw(ala_exception)
     {
         E* slice_ptr;
@@ -1002,6 +1144,7 @@ struct Collective
 
         return ret;
     }
+     */
 
     /**
       * @brief Slices a portion of data starting from a given index and for a specified length.
