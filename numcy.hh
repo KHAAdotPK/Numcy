@@ -267,8 +267,8 @@ class Numcy
 
                     Generates random numbers following a normal distribution with a specified mean and standard deviation, and it returns an object of type Collective<E>. 
                  */
-                template <typename E = double>
-                static Collective<E> randn(DIMENSIONS& like) throw (ala_exception)
+		template <typename E = double>
+                static Collective<E> randn(DIMENSIONS& like, E seed = 0) throw (ala_exception)
                 {                    
                     cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     
@@ -296,11 +296,24 @@ static std::random_device rd;
 
 */
 
-                    std::random_device rd{};
-                    std::mt19937 gen{rd()}; // Uses uniform initialization (using curly braces {})
+                    //std::random_device rd{};
+                    std::mt19937 gen;
+                    /*std::mt19937 gen{rd()};*/ // Uses uniform initialization (using curly braces {})
+                    //std::mt19937 gen{10}; // Uses direct initialization (using parentheses ())
                     //std::mt19937 gen(rd()); // Uses direct initialization (using parentheses ())                    
                     // values near the mean are the most likely
                     // standard deviation affects the dispersion of generated values from the mean
+
+                    if (seed == 0) // If seed is not provided, then generate random seed
+                    {
+                        std::random_device rd{};
+                        gen = std::mt19937(rd());
+                    }
+                    else // Otherwise, use the provided seed
+                    {
+                        gen = std::mt19937(seed);
+                    }
+
                     std::normal_distribution<> nd{NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION};
                     
                     /*std::uniform_real_distribution<> dis(-0.5, 0.5);*/
@@ -312,8 +325,8 @@ static std::random_device rd;
                     }
 
                     return Collective<E>{ptr, like.copy()};
-                }
-
+                }	
+		                
                 /*
                     Return random integers from low (inclusive) to high (exclusive).
                  */
