@@ -22,6 +22,7 @@
 
 #define NUMCY_DEFAULT_MEAN                0.0
 #define NUMCY_DEFAULT_STANDARD_DEVIATION  1.0
+#define NUMCY_DEFAULT_RANDOM_NUMBER_GENERATOR_SEED 10
 
 /* 
     DIMENSIONSOFARRAY::ptr array at index DIMENSIONSOFARRAY::size() - 2 stores the number of rows of inner most two dimension array.
