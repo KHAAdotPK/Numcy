@@ -267,12 +267,12 @@ class Numcy
 
                     Generates random numbers following a normal distribution with a specified mean and standard deviation, and it returns an object of type Collective<E>. 
                  */
-		template <typename E = double>
-                static Collective<E> randn(DIMENSIONS& like, E seed = 0) throw (ala_exception)
+		        template <typename E = double>
+                static Collective<E> randn(DIMENSIONS& like, E seed = 0, AXIS axis = AXIS_NONE) throw (ala_exception)
                 {                    
                     cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     
-                    if (n == 0)
+                    if (!like.getN())
                     {
                         throw ala_exception("Numcy::Random::randn() Error: Malformed shape of the array to be returned");
                     }
@@ -281,7 +281,7 @@ class Numcy
 
                     try 
                     {
-                        ptr = cc_tokenizer::allocator<E>().allocate(n);
+                        ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
                     }
                     catch (ala_exception& e)
                     {
@@ -317,11 +317,33 @@ static std::random_device rd;
                     std::normal_distribution<> nd{NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION};
                     
                     /*std::uniform_real_distribution<> dis(-0.5, 0.5);*/
-
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
+                    
+                    /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
                     {
-                        ptr[i] = nd(gen);                        
-                        /*ptr[i] = dis(gen);*/
+                        ptr[i] = nd(gen);                                               
+                    }*/
+
+                    switch (axis)
+                    {
+                        case AXIS_NONE:
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                            {
+                                ptr[i] = nd(gen);                                                    
+                            }
+                        }
+                        break;
+                        case AXIS_COLUMN:
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getNumberOfColumns(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < like.getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                                {
+                                    ptr[j*like.getNumberOfColumns() + i] = nd(gen);
+                                } 
+                            } 
+                        }
+                        break;                        
                     }
 
                     return Collective<E>{ptr, like.copy()};
