@@ -317,6 +317,7 @@ static std::random_device rd;
                     std::normal_distribution<> nd{NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION};
                     
                     /*std::uniform_real_distribution<> dis(-0.5, 0.5);*/
+                    /*std::uniform_real_distribution<> nd(NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION);*/
                     
                     /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
                     {

@@ -1190,6 +1190,8 @@ struct Collective
             }
 
             ret = Collective<E>{slice_ptr, DIMENSIONS{n, 1, NULL, NULL}};
+
+            cc_tokenizer::allocator<E>().deallocate(slice_ptr, n);
         }
         catch(const std::bad_alloc& e)
         {
@@ -1198,6 +1200,10 @@ struct Collective
         catch(const std::length_error& e)
         {
             throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+        catch (ala_exception& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::slice() -> ") + e.what());
         }
         
         //return slice_ptr;
