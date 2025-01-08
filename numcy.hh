@@ -176,6 +176,11 @@ class Numcy
         {
             Collective<E> x;
 
+            /*std::cout<< "u = " << u.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << " - " << u.getShape().getNumberOfColumns() << std::endl;
+            std::cout<< "v = " << v.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << " - " << v.getShape().getNumberOfColumns() << std::endl;*/
+
+            /*Collective<E> v_t = Numcy::transpose<E>(v);*/
+
             try
             {
                 x = u - v;
