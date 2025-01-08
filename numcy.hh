@@ -147,6 +147,48 @@ class Numcy
         }
         
         /*
+            Computes the Euclidean distance (L2 norm) between two vectors.
+
+            The Euclidean distance between two vectors u and v is defined as:
+            f(u, v) = sqrt(sum((u - v) * (u - v))), which is equivalent to:
+            f(u, v) = Numcy::enorm(u - v), where Numcy::enorm computes the magnitude of the difference vector (u - v).
+
+            This function first computes the difference between the two input vectors, 
+            then calculates the Euclidean norm of the resulting difference vector using the enorm() function.
+
+            Parameters:
+            - u: A reference to a Collective<E> representing the first input vector.
+            - v: A reference to a Collective<E> representing the second input vector.
+
+            Returns:
+            - E: The Euclidean distance between the input vectors u and v.
+
+            Throws:
+            - ala_exception: If an error occurs during vector subtraction or norm calculation.
+
+            Notes:
+            - This function assumes that both vectors u and v have the same dimensions. 
+              If they do not, an error may occur during vector operations.
+            - The template parameter E allows the function to operate on vectors of any numerical type.
+         */
+        template <typename E = double>
+        static E enorm_distance(Collective<E>& u, Collective<E>& v) throw (ala_exception)
+        {
+            Collective<E> x;
+
+            try
+            {
+                x = u - v;
+            }
+            catch(ala_exception& e)
+            {
+                std::cerr << "Numcy::enorm_distance() -> " << e.what() << std::endl;
+            }
+                        
+            return Numcy::enorm<E>(x);
+        }
+        
+        /*
             Euclidean norm corresponds to the square root of the sum of the absolute squared values of the vector's components
 
                                     ||u|| = sqrt(u1^2 + u2^2 + u3^2 + .... + (u(n-1))^2 + un^2)
@@ -170,7 +212,7 @@ class Numcy
             - ala_exception: If any error occurs during the calculation.
          */
         template <typename E = double>
-        static E enorm(Collective<E> x) throw (ala_exception)
+        static E enorm(Collective<E>& x) throw (ala_exception)
         {
             E sum = 0;
 
@@ -178,16 +220,24 @@ class Numcy
             {  
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
                 {                
-                    x[i] = x[i]*x[i];
+                    //x[i] = x[i]*x[i];
+                    //sum = sum + x[i];
 
-                    sum = sum + x[i];
+                    sum = sum + x[i] *  x[i];                    
                 }
 
                 return sqrt(sum); 
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::enorm() -> ") + e.what());
+                //throw ala_exception(cc_tokenizer::String<char>("Numcy::enorm() -> ") + e.what());
+
+                std::ostringstream oss;
+                oss << "Numcy::enorm() -> " << e.what();
+                /*<< "Input vector size: " << x.getShape().getN() << ". "
+                << "Details: " << e.what();*/
+
+                throw ala_exception(oss.str().c_str());
             }           
         }
                 
