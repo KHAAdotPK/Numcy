@@ -825,14 +825,14 @@ struct Collective
         {
             return *this;
         }*/
-
-        E* local_ptr = NULL;
-        Collective<E> ret;
-
+        
         if (!(other.getShape().getN() > 0))
         {
             throw ala_exception("Collective::operator + () Error: The 'other' Collective has an invalid shape with zero elements.");
         }
+
+        E* local_ptr = NULL;
+        Collective<E> ret;
         
         if (other.getShape().getN() == 1)
         {
