@@ -608,9 +608,147 @@ static std::random_device rd;
                                                 
             return /*(OutType*)*/ ptr;            
         }
+
+        /**
+         * @brief Concatenates two instances of the `Collective` class along a specified axis.
+         *
+         * This function concatenates two `Collective` objects (`a` and `b`) along the specified axis (`axis`).
+         * The function supports concatenation along columns (`AXIS_COLUMN`) and rows (`AXIS_ROW`). The shapes
+         * of the input arrays must be compatible for the specified axis:
+         * - For `AXIS_COLUMN`: The number of rows in `a` must match the number of rows in `b`.
+         * - For `AXIS_ROW`: The number of columns in `a` must match the number of columns in `b`.
+         *
+         * The function allocates memory for the concatenated result and returns a new `Collective` object
+         * containing the concatenated data. The caller is responsible for managing the memory of the returned object.
+         *
+         * @tparam E The type of elements stored in the `Collective` objects (e.g., `int`, `float`, `double`).
+         *
+         * @param a The first `Collective` object to concatenate.
+         * @param b The second `Collective` object to concatenate.
+         * @param axis The axis along which to concatenate the arrays. Defaults to `AXIS_COLUMN`.
+         *             - `AXIS_COLUMN`: Concatenates along columns (horizontal concatenation).
+         *             - `AXIS_ROW`: Concatenates along rows (vertical concatenation).
+         *
+         * @return A new `Collective` object containing the concatenated data.
+         *
+         * @throws ala_exception If:
+         * - The shapes of `a` and `b` are incompatible for the specified axis.
+         * - Memory allocation fails during the concatenation process.
+         * - An unsupported axis is provided.
+         *                  
+         * @example
+         * Collective<int> a = ...; // Assume a is a 3x2 array
+         * Collective<int> b = ...; // Assume b is a 3x1 array
+         * Collective<int> result = concatenate(a, b, AXIS_COLUMN); // Result is a 3x3 array
+         *         
+         */
+        template<typename E>
+        static Collective<E> concatenate(Collective<E>& a, Collective<E>& b, AXIS axis = AXIS_COLUMN)
+        {
+            E* ptr = nullptr;
+            Collective<E> ret = {nullptr, {0, 0, nullptr, nullptr}};
+
+            switch (axis)
+            {
+                case AXIS_COLUMN: 
+                {
+                    // Validate shapes for column-wise concatenation
+                    if (a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                    {
+                        throw ala_exception("Numcy::concatenate() Error: Number of rows must match for column-wise \"AXIS_COLUMN\" concatenation.");
+                    }
+
+                    // Calculate the new shape
+                    cc_tokenizer::string_character_traits<char>::size_type newColumns = a.getShape().getNumberOfColumns() + b.getShape().getNumberOfColumns();
+                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+
+                    // Allocate memory for the concatenated array
+                    try 
+                    {
+                        ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate(newRows * newColumns));
+                    }                     
+                    catch(const std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::concatenate(AXIS_COLUMNS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch(const std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::concatenate(AXIS_COLUMNS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    // Fill the concatenated array
+                    for (int i = 0; i < newRows; ++i)
+                    {
+                        for (int j = 0; j < a.getShape().getNumberOfColumns(); ++j)
+                        {
+                            ptr[i * newColumns + j] = a[i * a.getShape().getNumberOfColumns() + j];
+                        }
+                        for (int j = 0; j < b.getShape().getNumberOfColumns(); ++j)
+                        {
+                            ptr[i * newColumns + a.getShape().getNumberOfColumns() + j] = b[i * b.getShape().getNumberOfColumns() + j];
+                        }
+                    }
+
+                    // Set the result shape
+                    ret = Collective<E>{ptr,  DIMENSIONS{newColumns, newRows, nullptr, nullptr}};
+                    break;
+                }
+                case AXIS_ROWS:
+                {
+                    // Validate shapes for row-wise concatenation
+                    if (a.getShape().getNumberOfColumns() != b.getShape().getNumberOfColumns())
+                    {
+                        throw ala_exception("Numcy::concatenate(): Number of columns must match for row-wise \"AXIS_ROWS\" concatenation.");
+                    }
+
+                    // Calculate the new shape
+                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() + b.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                    cc_tokenizer::string_character_traits<char>::size_type newColumns = a.getShape().getNumberOfColumns();
+
+                    // Allocate memory for the concatenated array
+                    try
+                    {
+                        ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate(newRows * newColumns));
+                    }                     
+                    catch(const std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::concatenate(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch(const std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::concatenate(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    // Fill the concatenated array
+                    for (int i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); ++i)
+                    {
+                        for (int j = 0; j < newColumns; ++j)
+                        {
+                            ptr[i * newColumns + j] = a[i * a.getShape().getNumberOfColumns() + j];
+                        }
+                    }
+                    for (int i = 0; i < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); ++i)
+                    {
+                        for (int j = 0; j < newColumns; ++j)
+                        {
+                            ptr[(i + a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) * newColumns + j] = b[i * b.getShape().getNumberOfColumns() + j];
+                        }
+                    }
+
+                    // Set the result shape
+                    ret = Collective<E>{ptr, DIMENSIONS{newColumns, newRows, nullptr, nullptr}};
+                    break;
+                }
+                default:
+                throw ala_exception("Numcy::concatenate() Error: Unsupported axis.");
+            }
+
+            return ret;
+        }
+
         
         template<typename E>
-        static struct Collective<E> concatenate(struct Collective<E> a, struct Collective<E> b, AXIS axis=AXIS_COLUMN) throw (ala_exception)
+        static struct Collective<E> concatenate_old(struct Collective<E> a, struct Collective<E> b, AXIS axis=AXIS_COLUMN) throw (ala_exception)
         {  
             E *ptr = NULL;
             struct Collective<E> ret = {NULL, {0, 0, NULL, NULL}};
@@ -648,7 +786,7 @@ static std::random_device rd;
                     // Memory Allocation
                     try 
                     {
-                        ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<float>().allocate( a.getShape().getN() + b.getShape().getN() ));
+                        ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate( a.getShape().getN() + b.getShape().getN() ));
                     }
                     catch (std::bad_alloc e)
                     {
