@@ -116,15 +116,16 @@ class Numcy
             std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
             {                  
                 cc_tokenizer::allocator<char> alloc_obj;
-                E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
+                E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*(a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns())));
                 /*
                     TODO, check if it is actually working
                  */
                 memset(ptr, 0, sizeof(E)*b.shape.getNumberOfColumns());
+                //memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
                                 
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.shape.getNumberOfColumns(); i++)
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.getShape().getNumberOfColumns(); i++)
                 {                    
-                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.shape.getNumberOfColumns(); j++)
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                     {
                         ptr[i] = ptr[i] + a[j]*b[b.shape.getNumberOfColumns()*j + i];
                     }   
@@ -912,6 +913,113 @@ static std::random_device rd;
             }
 
             return Collective<E>{ptr, a.getShape().copy()};
+        }
+
+        /**
+         * @brief Performs matrix multiplication on two Collective<E> objects.
+         *
+         * This function computes the matrix product of two matrices represented by `Collective<E>` objects.
+         * The function validates the input shapes to ensure they are compatible for matrix multiplication.
+         * If the shapes are incompatible, an `ala_exception` is thrown.
+         *
+         * The matrix multiplication is performed using a lambda function that captures the input matrices
+         * by reference. The lambda allocates memory for the result matrix, initializes it to zero, and
+         * computes the product using a triple-nested loop. The result is wrapped in a new `Collective<E>`
+         * object and returned.
+         *
+         * @tparam E The data type of the matrix elements (default: double).
+         *
+         * @param a The first matrix (left-hand side operand). Must be atleast 2D matrix.
+         * @param b The second matrix (right-hand side operand). Must be atleast 2D matrix.
+         *
+         * @return A new `Collective<E>` object representing the result of the matrix multiplication.
+         *         The shape of the result matrix is determined by the number of rows in `a` and the
+         *         number of columns in `b`.
+         *
+         * @throws ala_exception If:
+         *         - The shapes of `a` and `b` are incompatible for matrix multiplication.
+         *         - Memory allocation for the result matrix fails.
+         *         - An error occurs during matrix multiplication.
+         *         
+         *
+         * @example
+         *     Collective<double> a = ...; // 2x3 matrix
+         *     Collective<double> b = ...; // 3x2 matrix
+         *     Collective<double> result = matmul(a, b); // Result is a 2x2 matrix
+         */
+        template<typename E = double>
+        static Collective<E> matmul(Collective<E> a, Collective<E> b) throw (ala_exception)
+        {
+            // Validate input shapes
+            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            {
+                throw ala_exception("Numcy::matmul() Error: Incompatible shapes for matrix product of inputs.\nEither the last dimension of the first matrix must match the second-to-last dimension of the second matrix,\nor both are scalars.");
+            }
+
+             // Lambda function to perform matrix multiplication   
+            /*
+                Immutable capture list...
+                ----------------------------
+                Originaly this was the lambda's ca[ture list [a, b]. 
+                It captures the variables a and b by value.
+                This means that func has access to the values of a and b as they were when the lambda was created.
+                With the above capture list, I was getting compile time errors...
+                - "error C2662: 'DIMENSIONSOFARRAY Dimensions::getNumberOfRows(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions'"
+                - "error C2662: 'cc_tokenizer::string_character_traits<char>::size_type Dimensions::getNumberOfColumns(void)': cannot convert 'this' pointer from 'const DIMENSIONS' to 'Dimensions &'"
+
+                Then I change it to [&a, &b]...
+                ----------------------------------
+                If you need to modify a and b within the lambda, you should capture them by reference using [&a, &b] in the capture list.
+                However, this would require that a and b are mutable in the outer scope.
+             */                        
+            std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
+            {   
+                // Allocate memory for the result matrix
+                E* ptr = nullptr;
+
+                try
+                {                
+                    ptr = cc_tokenizer::allocator<E>().allocate(b.getShape().getNumberOfColumns()*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+                }
+                catch (const std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+                catch (const std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul() Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+                  
+                // Initialize result matrix to zero
+                memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
+                
+                // Perform matrix multiplication
+                try                 
+                {   
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < b.getShape().getNumberOfColumns(); j++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); k++)
+                            {                                                            
+                                ptr[i*b.getShape().getNumberOfColumns() + j] =  ptr[i*b.getShape().getNumberOfColumns() + j] + a[i*a.getShape().getNumberOfColumns() + k] * b[k*b.getShape().getNumberOfColumns() + j];
+                            }
+                        }
+                    }                 
+                }
+                
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul() -> ") + cc_tokenizer::String<char>(e.what()));    
+                }
+                
+                // Wrap result in a Collective object
+                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.getShape().getNumberOfColumns(), a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+                
+                return ret;
+            };
+            
+            return func();
         }
 
         /* 
