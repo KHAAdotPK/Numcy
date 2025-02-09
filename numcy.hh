@@ -60,28 +60,41 @@ class Numcy
          */
         template<typename E = double>
         static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
-        {               
+        {   
+            /*
+                Check if the last dimension of "a" is the same size as the second-to-last dimension of "b"
+             */            
             if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
-            {
-                //throw ala_exception("Numcy::dot(): Incompatible shapes for dot product: Number of columns in the first matrix does not match the number of rows in the second matrix.");
+            {   
+                /* 
+                    Check if "b" is scalar
+                 */             
                 if (!(b.getShape().getN() == 1))
-                {
-                    // Needs exception message...
+                {                    
                     throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product...\neither number of columns of the first matrix must match the number of rows of the second matrix,\nor second matrix has to be a scalar.");
                 }
             }
+
+            /*
+                The input matrices have compatible shapes for dot product, i.e.,
+                the number of columns in the first matrix matched the number of rows in the second matrix or 
+                the second matrix is a scalar
+             */
             
             std::function</*E*()*/ Collective<E>()> multiplier_is_scalar_func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
             {
-                Collective<E> ret;                
+                //Collective<E> ret;
+                E* ptr = nullptr;
+
                 try 
                 {
-                    E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                    ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                    
                     for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
                     {
                         ptr[i] = a[i] * b[0];
                     }
-                    ret = Collective<E>{ptr, a.getShape().copy()};                    
+                    //ret = Collective<E>{ptr, a.getShape().copy()};                    
                 }    
                 catch(std::length_error& e)
                 {
@@ -93,9 +106,11 @@ class Numcy
                 }
                 catch (ala_exception& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
                 }    
                 
+                Collective<E> ret = Collective<E>{ptr, a.getShape().copy()};
+
                 return ret;
             };                        
             /*
@@ -115,36 +130,56 @@ class Numcy
              */                        
             std::function</*E*()*/ Collective<E>()> func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
             {                  
-                cc_tokenizer::allocator<char> alloc_obj;
-                E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*(a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns())));
+                //cc_tokenizer::allocator<char> alloc_obj;
+                //E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*(a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns())));
+
+                E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.getShape().getNumberOfColumns());
                 /*
                     TODO, check if it is actually working
-                 */
-                memset(ptr, 0, sizeof(E)*b.shape.getNumberOfColumns());
-                //memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
-                                
+                 */                
+                memset(ptr, 0, sizeof(E)*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.getShape().getNumberOfColumns());
+                
+                /*
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.getShape().getNumberOfColumns(); i++)
                 {                    
                     for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                     {
                         ptr[i] = ptr[i] + a[j]*b[b.shape.getNumberOfColumns()*j + i];
                     }   
+                }*/
+
+                try                 
+                {   
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < b.getShape().getNumberOfColumns(); j++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); k++)
+                            {                                                            
+                                ptr[i*b.getShape().getNumberOfColumns() + j] =  ptr[i*b.getShape().getNumberOfColumns() + j] + a[i*a.getShape().getNumberOfColumns() + k] * b[k*b.getShape().getNumberOfColumns() + j];
+                            }
+                        }
+                    }                 
+                }
+                
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul() -> ") + cc_tokenizer::String<char>(e.what()));    
                 }
 
-                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+                Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
                 
                 return ret;
             };
            
-           if (b.getShape().getN() == 1)
-           {                   
-                return multiplier_is_scalar_func();
-           }
-           else 
-           {                
-                return func();
-           }
-           //return NULL;
+            if (b.getShape().getN() == 1)
+            {                   
+                 return multiplier_is_scalar_func();
+            }
+            else 
+            {                
+                 return func();
+            }            
         }
         
         /*
