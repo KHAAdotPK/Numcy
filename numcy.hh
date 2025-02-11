@@ -587,10 +587,13 @@ static std::random_device rd;
         class LinAlg linalg;
 
         /*
-            @stop, integer or real; end of interval. The interval does not include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
-            @step, integer or real, optional; spacing between values. For any output out, this is the distance between two adjacent values, out[i+1] - out[i]. The default step size is 1. If step is specified as a position argument, start must also be given.
-            @like, array_like, optional; at the moment it is here for documentation purposes.
-            Returns an array like the instance of DIMENSIONS passed
+         * The arange() function generates an array of evenly spaced values within a specified interval.
+         * Deterministic Behavior: arange() is deterministic, so the same input will always produce the same output.
+         *
+         * @stop, integer or real; end of interval. The interval does not include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
+         * @step, integer or real, optional; spacing between values. For any output out, this is the distance between two adjacent values, out[i+1] - out[i]. The default step size is 1. If step is specified as a position argument, start must also be given.
+         * @like, array_like, optional; at the moment it is here for documentation purposes.
+         * Returns an array like the instance of DIMENSIONS passed
          */
         template <typename E = float, typename OutType = float>
         OutType* arange(E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = {1, 1, NULL, NULL}) const throw (ala_exception)
@@ -598,13 +601,17 @@ static std::random_device rd;
             return arange<E, OutType>(0, stop, step, like);
         }
 
-        /*
-            @start, integer or real; start of interval. The default start value is 0 and the interval includes this value.
-            @stop, integer or real; end of interval. The interval does not include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
-            @step, integer or real, optional; spacing between values. For any output out, this is the distance between two adjacent values, out[i+1] - out[i]. The default step size is 1. If step is specified as a position argument, start must also be given.
-            @like, array_like, optional; at the moment it is here for documentation purposes.
-            Returns an array like the instance of DIMENSIONS passed 
-         */
+       /*
+        * The arange() function generates an array of evenly spaced values within a specified interval.
+        * Deterministic Behavior: Numcy::arange is deterministic, so the same input will always produce the same output.
+        * 
+        * @start, integer or real; start of interval. The default start value is 0 and the interval includes this value.
+        * @stop, integer or real; end of interval. The interval does not include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
+        * @step, integer or real, optional; spacing between values. For any output out, this is the distance between two adjacent values, out[i+1] - out[i]. The default step size is 1. If step is specified as a position argument, start must also be given.
+        * @like, array_like, optional; at the moment it is here for documentation purposes.
+        * 
+        * Returns an array like the instance of DIMENSIONS passed 
+        */
         template <typename E = float, typename OutType = float>
         static OutType* arange(E start /*= 0*/, E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = {1, 1, NULL, NULL}) throw (ala_exception)
         {               
