@@ -71,7 +71,7 @@ class Numcy
                  */             
                 if (!(b.getShape().getN() == 1))
                 {                    
-                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product...\neither number of columns of the first matrix must match the number of rows of the second matrix,\nor second matrix has to be a scalar.");
+                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product... Either number of columns of the first matrix must match the number of rows of the second matrix, or second matrix has to be a scalar.");
                 }
             }
 
