@@ -296,6 +296,8 @@ struct Collective
          */  
         ~Collective()
         {   
+            std::cout<< "In the destructor call...." << std::endl;
+
             if (reference_count)
             {
                 return;
@@ -306,11 +308,11 @@ struct Collective
              */
 
             /*
-                To stop the effects of double deletion... becuse we are explicitly calling the destructor method of this object
+                To stop the effects of double deletion... becuse we are explicitly calling(like may be in the case of "placement new") the destructor method of this object
              */
             if (ptr != NULL)
             {                            
-                cc_tokenizer::allocator<E>().deallocate(ptr);
+                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
 
                 /* 
                     TODO, causing problems, find where?

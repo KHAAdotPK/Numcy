@@ -27,7 +27,6 @@ typedef struct DimensionsOfArray
 
         ~DimensionsOfArray(void)
         {
-
             if (reference_count)
             {
                 return;
@@ -35,10 +34,12 @@ typedef struct DimensionsOfArray
             
             if (ptr != NULL)
             {                            
-                cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(ptr));
+                cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(ptr), sizeof(DIMENSIONSOFARRAY));
                 
                 ptr = NULL;
-                n = 0;                
+                
+                n = 0;
+
                 // Just for documentation purposes
                 reference_count = 0;                
             }            

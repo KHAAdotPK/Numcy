@@ -89,11 +89,12 @@ typedef struct Dimensions
     }
 
     ~Dimensions()
-    {         
+    {          
         Dimensions* current = next;
                 
         if (next != NULL)
         {
+            // Go to the last link of the linked list
             while (1)
             {
                 if (current->next == NULL)
@@ -104,11 +105,12 @@ typedef struct Dimensions
                 current = current->next;
             }
 
+            // Delete the links in reverse order    
             while (1)
             {
                 Dimensions* local = current->prev;
 
-                cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(current));
+                cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(current), sizeof(DIMENSIONS));
 
                 if (local == NULL || local == this)
                 {
