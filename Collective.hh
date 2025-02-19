@@ -37,8 +37,36 @@ struct Collective
         }
 
         /*Collective (E* v, DIMENSIONS like) : ptr(v), shape(like), reference_count(0)*/
-        Collective (E* v, DIMENSIONS like)
-        {
+        Collective (E* v, DIMENSIONS like) throw (ala_exception)
+        {  
+            if (v != NULL && like.getN())
+            {
+                try
+                {
+                    if (ptr != NULL)
+                    {
+                        cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
+                        ptr = NULL;                                                 
+                    }
+                    
+                    ptr = v;
+                    shape = like;
+                }
+                catch (std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+            }
+            else
+            {
+                throw ala_exception("Collective::Collective(E*, DIMENSIONS) Error: The received pointer to the array is NULL or the shape of the array is invalid.");
+            }
+
+            /*          
             try 
             {   
                 if (v != NULL) 
@@ -64,7 +92,8 @@ struct Collective
             }
             
             shape = *(like.copy());
-            reference_count = 0;        
+            reference_count = 0;
+            */        
         }
 
         /**
@@ -142,7 +171,7 @@ struct Collective
         * - The reference count is set to 0.
         */
         Collective (E *v, Dimensions* like)
-        { 
+        {             
             if (v != NULL)
             {
                 try 
@@ -173,7 +202,9 @@ struct Collective
 
         Collective (Collective<E>& other) throw (ala_exception)
         {   
-            reference_count = 0;         
+            reference_count = 0; 
+            
+            std::cout<< "COPY Constructor" << std::endl;
 
             try 
             {
@@ -295,9 +326,7 @@ struct Collective
          * initializing the internal data structure to default values.
          */  
         ~Collective()
-        {   
-            std::cout<< "In the destructor call...." << std::endl;
-
+        {               
             if (reference_count)
             {
                 return;
@@ -371,7 +400,7 @@ struct Collective
 
             if (ptr != NULL)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr);
+                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
 
                 ptr = NULL;
             }

@@ -88,6 +88,10 @@ typedef struct Dimensions
     {
     }
 
+    Dimensions(Dimensions* ref) : columns(ref->columns), rows(ref->rows), next(ref->next), prev(ref->prev), reference_count(0)
+    {
+    }
+
     ~Dimensions()
     {          
         Dimensions* current = next;
@@ -356,13 +360,25 @@ typedef struct Dimensions
         return n;
     }
 
-    Dimensions& operator=(Dimensions& other)
+    Dimensions& operator= (Dimensions& other)
     {
-        this->columns = other.columns;
-        this->rows = other.rows;
+        // Check for self-assignment
+        if (this == &other)
+        {
+            return *this;
+        }
 
-        this->next = other.next;
-        this->prev = other.prev;
+        this->~Dimensions();
+
+        new (this) Dimensions (other);
+        
+        /*
+            this->columns = other.columns;
+            this->rows = other.rows;
+
+            this->next = other.next;
+            this->prev = other.prev;
+         */
 
         return *this;
     }
