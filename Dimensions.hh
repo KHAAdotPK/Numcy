@@ -84,7 +84,7 @@ typedef struct Dimensions
 
     }
         
-    Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, struct Dimensions* n, struct Dimensions* p) : columns(c), rows(r), next(n), prev(p), reference_count(0)
+    Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, Dimensions* n, Dimensions* p) : columns(c), rows(r), next(n), prev(p), reference_count(0)
     {
     }
 
@@ -146,7 +146,7 @@ typedef struct Dimensions
         //std::cout<<"In the destructor...."<<std::endl;        
     }
 
-    /*
+        /*
             As the object is assigned to variables or passed around, the reference count is incremented (meaning there's one more way to access it).
          */
         void incrementReferenceCount(void) 
@@ -202,9 +202,7 @@ typedef struct Dimensions
         Dimensions *ret = NULL, *current;
         cc_tokenizer::string_character_traits<char>::size_type n = getN();
         cc_tokenizer::allocator<char> alloc_obj;
-
-        //std::cout<< "Size = " << this->getDimensionsOfArray().size() << std::endl;
-
+        
         for (size_t i = 0; i < getDimensionsOfArray().size() - 1; i++)
         {
             if (ret == NULL)
@@ -364,23 +362,72 @@ typedef struct Dimensions
     {
         // Check for self-assignment
         if (this == &other)
-        {
-            return *this;
+        {            
+            return *this;    
         }
 
-        this->~Dimensions();
+        /*
+            Placement new operator is used to create a new object at the same memory location as the current object.
+            This is done to avoid memory leaks and to ensure that the current object is properly destructed before creating a new object.
 
+            Lets hope it works as expected. I used it as it looks cool and it is a good practice to use it.
+         */
+        // Delete the current object
+        this->~Dimensions();
+        // Create a new object with the same values as the other object
         new (this) Dimensions (other);
         
+        /* 
+            If things start to go wrong, you can always revert back to the old way of doing things.            
+         */
         /*
             this->columns = other.columns;
             this->rows = other.rows;
 
             this->next = other.next;
             this->prev = other.prev;
-         */
+         */ 
+        
+         /*Dimensions* current = next;
+                
+         if (next != NULL)
+         {
+             // Go to the last link of the linked list
+             while (1)
+             {
+                 if (current->next == NULL)
+                 {
+                     break;
+                 }
+ 
+                 current = current->next;
+             }
+ 
+             // Delete the links in reverse order    
+             while (1)
+             {
+                 Dimensions* local = current->prev;
+ 
+                 cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(current), sizeof(DIMENSIONS));
+ 
+                 if (local == NULL || local == this)
+                 {
+                     break;
+                 }
+ 
+                 current = local;
+             }
+         }*/
+         
+            /*
+            this->columns = other.columns;
+            this->rows = other.rows;
 
-        return *this;
+            this->next = other.next;
+            this->prev = other.prev;
+             */
+                  
+        return *this;        
     }
     
     /*

@@ -61,8 +61,7 @@ typedef struct DimensionsOfArray
         }
 
         cc_tokenizer::string_character_traits<char>::size_type operator[](cc_tokenizer::string_character_traits<char>::size_type index) const
-        {   
-                    
+        {                       
             return ptr[index];     
         }
     
@@ -170,7 +169,6 @@ typedef struct DimensionsOfArray
          */
         cc_tokenizer::string_character_traits<char>::size_type size(void) 
         {
-
             return n;
         }
 
