@@ -208,12 +208,27 @@ struct Collective
         Collective (Collective<E>& other) throw (ala_exception)
         {   
             reference_count = 0; 
-            
-            std::cout<< "COPY Constructor" << std::endl;
 
+            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
+            if (ptr != NULL && getShape().getN())
+            {                
+                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
+                    
+                shape = DIMENSIONS{0, 0, NULL, NULL};
+
+                ptr = NULL;                 
+            }
+                        
             try 
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                {
+                    ptr[i] = other[i];
+                }
+
+                shape = other.getShape();
             }
             catch (std::length_error& e)
             {
@@ -223,13 +238,10 @@ struct Collective
             {
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
-
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < /*(other.ptr != NUL) &&*/ other.getShape().getN(); i++)
+            catch (ala_exception& e)
             {
-                ptr[i] = other[i];
-            }
-
-            shape = *(other.getShape().copy());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() -> ") + cc_tokenizer::String<char>(e.what())); 
+            }                        
         } 
 
         DIMENSIONS& getShape(void)
