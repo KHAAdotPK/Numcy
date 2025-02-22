@@ -176,7 +176,19 @@ struct Collective
         * - The reference count is set to 0.
         */
         Collective (E *v, Dimensions* like)
-        {             
+        {   
+            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
+            if (ptr != NULL && getShape().getN())
+            {                
+                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
+                    
+                shape = DIMENSIONS{0, 0, NULL, NULL};
+
+                ptr = NULL;
+                
+                reference_count = 0;
+            }
+            
             if (v != NULL)
             {
                 try 
@@ -195,14 +207,22 @@ struct Collective
                 {
                     throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() -> ") + cc_tokenizer::String<char>(e.what()));
+                }
+
+                shape = *like;
+                reference_count = 0;    
             }
-            else
+            /*else
             {
                 ptr = NULL;
-            }
+            }*/
             
-            shape = *(like->copy());
-            reference_count = 0;           
+            //shape = *(like->copy());
+            //shape = *like;
+            //reference_count = 0;           
         }
 
         Collective (Collective<E>& other) throw (ala_exception)
@@ -555,7 +575,33 @@ struct Collective
         Collective<F> operator* (F n) throw (ala_exception)
         {                        
             F* ptr = NULL;
+            Collective<F> other;
 
+            try 
+            {
+                ptr = cc_tokenizer::allocator<F>().allocate(1);
+
+                *ptr = n;
+
+                other = Collective<F>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+                
+                return Numcy::dot(*this, other);
+            }
+            catch (const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));    
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }  
+
+            /*F* ptr = NULL;
+            
             try
             {
                 ptr = cc_tokenizer::allocator<F>().allocate(getShape().getN());
@@ -583,7 +629,7 @@ struct Collective
                 ptr[i] = (*this)[i] * n;
             }*/
 
-            return Collective<F>{ptr, getShape().copy()};
+            return Collective<F>{NULL, DIMENSIONS{0, 0, NULL, NULL}};
         }
 
         // Overloading the binary * operator for multiplying two Collective instances
