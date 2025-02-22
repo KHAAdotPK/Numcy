@@ -109,7 +109,7 @@ class Numcy
                     throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
                 }    
                 
-                Collective<E> ret = Collective<E>{ptr, a.getShape().copy()};
+                Collective<E> ret = Collective<E>{ptr, a.getShape()/*.copy()*/};
 
                 return ret;
             };                        
@@ -1456,7 +1456,7 @@ static std::random_device rd;
         }
     
         template<typename E>
-        static struct Collective<E> sin(Collective<E> x) 
+        static struct Collective<E> sin(Collective<E>& x) 
         {                        
             E* ptr = NULL;             
             Collective<E> ret; 
@@ -1464,21 +1464,31 @@ static std::random_device rd;
             try 
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(x.getShape().getN());
-                ret = Collective<E>{ptr, *(x.getShape().copy())};
+
+                ret = Collective<E>{ptr, /**(x.getShape().copy())*/ x.getShape()};
+
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+                {                
+                    ret[i] = std::sin(x[i]);
+                }
             }
             catch (std::bad_alloc& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));\
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
             catch (std::length_error& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));\
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sin() -> ") + cc_tokenizer::String<char>(e.what()));
             }
             
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+            /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
             {                
                 ret[i] = std::sin(x[i]);
-            }
+            }*/
 
             return ret;
         }
