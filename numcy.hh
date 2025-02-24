@@ -689,7 +689,7 @@ static std::random_device rd;
         static Collective<E> concatenate(Collective<E>& a, Collective<E>& b, AXIS axis = AXIS_COLUMN)
         {
             E* ptr = nullptr;
-            Collective<E> ret = {nullptr, {0, 0, nullptr, nullptr}};
+            Collective<E> ret = Collective<E>{nullptr, DIMENSIONS{0, 0, nullptr, nullptr}};
 
             switch (axis)
             {
