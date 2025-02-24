@@ -694,13 +694,13 @@ static std::random_device rd;
             switch (axis)
             {
                 case AXIS_COLUMN: 
-                {
+                {                    
                     // Validate shapes for column-wise concatenation
                     if (a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
                     {
                         throw ala_exception("Numcy::concatenate() Error: Number of rows must match for column-wise \"AXIS_COLUMN\" concatenation.");
                     }
-
+                    
                     // Calculate the new shape
                     cc_tokenizer::string_character_traits<char>::size_type newColumns = a.getShape().getNumberOfColumns() + b.getShape().getNumberOfColumns();
                     cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
@@ -708,7 +708,7 @@ static std::random_device rd;
                     // Allocate memory for the concatenated array
                     try 
                     {
-                        ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate(newRows * newColumns));
+                        ptr = cc_tokenizer::allocator<E>().allocate(newRows * newColumns);                        
                     }                     
                     catch(const std::bad_alloc& e)
                     {
@@ -722,18 +722,18 @@ static std::random_device rd;
                     // Fill the concatenated array
                     for (int i = 0; i < newRows; ++i)
                     {
-                        for (int j = 0; j < a.getShape().getNumberOfColumns(); ++j)
+                        for (int j = 0; j < a.getShape().getNumberOfColumns(); j++)
                         {
                             ptr[i * newColumns + j] = a[i * a.getShape().getNumberOfColumns() + j];
                         }
-                        for (int j = 0; j < b.getShape().getNumberOfColumns(); ++j)
+                        for (int j = 0; j < b.getShape().getNumberOfColumns(); j++)
                         {
                             ptr[i * newColumns + a.getShape().getNumberOfColumns() + j] = b[i * b.getShape().getNumberOfColumns() + j];
                         }
                     }
-
+                    
                     // Set the result shape
-                    ret = Collective<E>{ptr,  DIMENSIONS{newColumns, newRows, nullptr, nullptr}};
+                    ret = Collective<E>{ptr,  DIMENSIONS{newColumns, newRows, nullptr, nullptr}};                                        
                     break;
                 }
                 case AXIS_ROWS:
@@ -783,9 +783,10 @@ static std::random_device rd;
                     break;
                 }
                 default:
-                throw ala_exception("Numcy::concatenate() Error: Unsupported axis.");
+                    throw ala_exception("Numcy::concatenate() Error: Unsupported axis.");
+                break;                    
             }
-
+            
             return ret;
         }
 

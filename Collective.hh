@@ -49,7 +49,7 @@ struct Collective
 
                     ptr = NULL;                 
                 }
-
+                
                 // If v is not NULL and like has a valid shape, it allocates memory and copies data from v.
                 if (v != NULL)
                 {                        
@@ -63,7 +63,7 @@ struct Collective
                         }
 
                         shape = like;
-                    }    
+                    }                                         
                 } 
                 // If v is NULL but like has a valid shape, it initializes ptr to NULL but retains the shape.              
                 /*
@@ -98,7 +98,7 @@ struct Collective
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) -> ") + cc_tokenizer::String<char>(e.what()));
             }
             
-            reference_count = 0;
+            reference_count = 0;            
         }
 
         /**
@@ -428,22 +428,32 @@ struct Collective
          * @return A reference to the current instance after assignment.
          */
         Collective<E>& operator= (Collective<E>& other) throw (ala_exception)
-        {               
+        {                           
             // Check for self-assignment
             if (this == &other)
             {
                 return *this;
             }
+
+            // It only gets executed when both are same and this only happens when both are NULL    
+            /*if ((ptr == other.ptr))
+            {
+                std::cout<< "They both are same -> " << ptr << " ------> " << other.ptr <<std::endl;
+            }*/
             
-            if (ptr != NULL)
+            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
+            // These both are same, but the second one is more readable, becuause only checking ptr against NULL is dangerous because it may be pointing to some garbage value.
+            if (ptr != NULL && getShape().getN())
             {
                 cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-
+                
                 ptr = NULL;
-
+                
                 shape = DIMENSIONS{0, 0, NULL, NULL};
-            }
-                        
+
+                reference_count = 0;
+            }           
+                       
             // Decrement the reference count of the current instance            
             /*
                 FOR DOCUMENTATION PURPOSES...
@@ -459,9 +469,9 @@ struct Collective
             /*ptr = other.ptr;
             shape = other.shape;*/
 
-            reference_count = 0;
+            //reference_count = 0;
 
-            if (other.ptr != NULL)
+            if (other.ptr != NULL && other.getShape().getN())
             {                
                 try 
                 {                                                
@@ -472,7 +482,11 @@ struct Collective
                         ptr[i] = other[i];
                     }
 
-                    //shape = *(other.getShape().copy());                                          
+                    //shape = *(other.getShape().copy()); 
+                    
+                    shape = other.getShape();
+
+                    reference_count = 0;
                 }
                 catch (std::length_error& e)
                 {
@@ -492,9 +506,12 @@ struct Collective
                 ptr = NULL;
                 
                 //shape = DIMENSIONS{0, 0, NULL, NULL};  
+                shape = other.getShape();
+
+                reference_count = 0;
             }
-                        
-            shape = other.shape;
+                                   
+            //shape = other.shape;
             //shape = *(other.getShape().copy());
 
             // Increment the reference count of the new instance
