@@ -438,7 +438,7 @@ static std::random_device rd;
                         break;                        
                     }
 
-                    return Collective<E>{ptr, like.copy()};
+                    return Collective<E>{ptr, /*like.copy()*/like};
                 }	
 		                
                 /*
@@ -900,7 +900,7 @@ static std::random_device rd;
                 ptr[i] = a[i] / b[0];
             }
             
-            return Collective<E>{ptr, a.getShape().copy()};
+            return Collective<E>{ptr, /*a.getShape().copy()*/ a.getShape()};
         }
             
         /*
@@ -955,7 +955,7 @@ static std::random_device rd;
                 ptr[i] = std::exp(a[i]);
             }
 
-            return Collective<E>{ptr, a.getShape().copy()};
+            return Collective<E>{ptr, /*a.getShape().copy()*/ a.getShape()};
         }
 
         /**
@@ -1525,7 +1525,7 @@ static std::random_device rd;
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::subtract() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
 
-            return Collective<E>{ptr, x1.getShape().copy()};
+            return Collective<E>{ptr, /*x1.getShape().copy()*/ x1.getShape()};
         }
 
         template <typename E>
@@ -1594,7 +1594,7 @@ static std::random_device rd;
                 }
             }
                         
-            return Collective<E>{ptr, x1.getShape().copy()};            
+            return Collective<E>{ptr, /*x1.getShape().copy()*/ x1.getShape()};            
         }
 
         template<typename E>
@@ -1730,7 +1730,7 @@ static std::random_device rd;
 
             return Collective<E>{ptr, m1.getShape().copy()};
 */
-            return Collective<E>{ptr, *(dim.copy())};
+            return Collective<E>{ptr, /**(dim.copy())*/ dim};
         } 
 
         template<typename E>

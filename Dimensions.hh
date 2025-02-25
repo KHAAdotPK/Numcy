@@ -199,7 +199,7 @@ typedef struct Dimensions
      */
     Dimensions* copy(void)
     {
-        Dimensions *ret = NULL, *current;
+        Dimensions *ret = NULL, *current = NULL;
         cc_tokenizer::string_character_traits<char>::size_type n = getN();
         cc_tokenizer::allocator<char> alloc_obj;
         
@@ -208,13 +208,24 @@ typedef struct Dimensions
             if (ret == NULL)
             {
                 ret = reinterpret_cast<Dimensions*>(alloc_obj.allocate(sizeof(Dimensions)));
-                *ret = Dimensions {0, getDimensionsOfArray()[i], NULL, NULL};
+                ret->columns = 0;
+                ret->rows = getDimensionsOfArray()[i];
+                ret->next = NULL;
+                ret->prev = NULL;
+                /* Wrong doing */
+                //*ret = Dimensions {0, getDimensionsOfArray()[i], NULL, NULL};
+                
                 current = ret;
             }
             else
             {
                 current->next = reinterpret_cast<Dimensions*>(alloc_obj.allocate(sizeof(Dimensions)));
-                *(current->next) = Dimensions {0, getDimensionsOfArray()[i], NULL, current}; 
+                current->next->columns = 0;
+                current->next->rows = getDimensionsOfArray()[i];
+                current->next->next = NULL;
+                current->next->prev = current;
+                /* Wrong doing */
+                //*(current->next) = Dimensions {0, getDimensionsOfArray()[i], NULL, current}; 
 
                 current = current->next;
             }
