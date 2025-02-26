@@ -109,7 +109,7 @@ class Numcy
                     throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
                 }    
                 
-                Collective<E> ret = Collective<E>{ptr, a.getShape()/*.copy()*/};
+                Collective<E> ret = Collective<E>{ptr, a.getShape()/*a.getShape().copy()*/};
 
                 return ret;
             };                        
@@ -438,7 +438,7 @@ static std::random_device rd;
                         break;                        
                     }
 
-                    return Collective<E>{ptr, /*like.copy()*/like};
+                    return Collective<E>{ptr, /*like.copy()*/ like};
                 }	
 		                
                 /*
@@ -1325,7 +1325,7 @@ static std::random_device rd;
                 }
             }
 
-            return Collective<E>{ptr, m2.getShape().copy()};
+            return Collective<E>{ptr, /*m2.getShape().copy()*/ m2};
         }
 
         /**
@@ -1369,7 +1369,7 @@ static std::random_device rd;
                 *ptr = static_cast<E>(1);
                 Collective<E> plusOne = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
                 u_e_plusOne = u_e + plusOne;
-                oneDivided_by_u_e_plusOne = Numcy::ones<E>(*u.getShape().copy()) / u_e_plusOne;                
+                oneDivided_by_u_e_plusOne = Numcy::ones<E>(/**u.getShape().copy()*/ u) / u_e_plusOne;                
             }
             catch (const std::bad_alloc& e)
             {
@@ -1453,7 +1453,7 @@ static std::random_device rd;
                 }                            
             }
 
-            return Collective<E>{ptr, x.getShape().copy()};
+            return Collective<E>{ptr, /*x.getShape().copy()*/ x.getShape()};
         }
     
         template<typename E>
@@ -1622,7 +1622,7 @@ static std::random_device rd;
                     try 
                     {
                         ptr = cc_tokenizer::allocator<E>().allocate(m1.getShape().getN());
-                        dim = *(m1.getShape().copy());
+                        dim = /**(m1.getShape().copy())*/ m1;
                     } 
                     catch (std::length_error& e)
                     {
@@ -1659,7 +1659,7 @@ static std::random_device rd;
                     try 
                     {
                         ptr = cc_tokenizer::allocator<E>().allocate((m1.getShape().getN() > m2.getShape().getN()) ? m1.getShape().getN() : m2.getShape().getN());
-                        dim = (m1.getShape().getN() > m2.getShape().getN()) ? *(m1.getShape().copy()) : *(m2.getShape().copy());
+                        dim = (m1.getShape().getN() > m2.getShape().getN()) ? /**(m1.getShape().copy())*/ m1 : /**(m2.getShape().copy())*/ m2;
                     } 
                     catch (std::length_error& e)
                     {
@@ -1940,7 +1940,7 @@ static std::random_device rd;
                 ptr[i] = 0x00;
             }
             
-            return Collective<E>{ptr, shape.copy()};
+            return Collective<E>{ptr, /*shape.copy()*/ shape};
         }
 
         template <typename E = float>

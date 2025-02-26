@@ -62,7 +62,7 @@ struct Collective
                             ptr[i] = v[i];
                         }
 
-                        shape = like;
+                        shape = /*like*/ *(like.copy());
                     }                                         
                 } 
                 // If v is NULL but like has a valid shape, it initializes ptr to NULL but retains the shape.              
@@ -82,7 +82,7 @@ struct Collective
                 else if (like.getN()) 
                 {
                     ptr = NULL;                 
-                    shape = like;
+                    shape = /*like*/ *(like.copy());
                 }                     
             }
             catch (std::length_error& e)
@@ -212,7 +212,7 @@ struct Collective
                     throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() -> ") + cc_tokenizer::String<char>(e.what()));
                 }
 
-                shape = *like;
+                shape = /**like*/ *(like->copy());
                 reference_count = 0;    
             }
             /*else
@@ -791,7 +791,7 @@ struct Collective
             ptr[i] = (*this)[i] - (E)subtrahend;
         }
 
-        return Collective<E>{ptr, *((*this).getShape().copy())};
+        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()};
     }
 
     template <typename F = double>
@@ -806,7 +806,7 @@ struct Collective
 
         try
         {
-            ptr = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
+            ptr = cc_tokenizer::allocator<E>().allocate(/*(*this).getShape().getN()*/ getShape().getN());
         }
         catch (std::bad_alloc& e)
         {
@@ -821,14 +821,14 @@ struct Collective
         {
             try
             {                                        
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < /*(*this).getShape().getN()*/ getShape().getN(); i++)
                 {
                     ptr[i] = (*this)[i] - (E)(subtrahend[0]);
                 }
             }
             catch (ala_exception& e)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
                 ptr = NULL;
 
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () -> ") + e.what());
@@ -845,7 +845,7 @@ struct Collective
             }
             catch (ala_exception& e)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+                cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
                 ptr = NULL;
 
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
@@ -853,13 +853,13 @@ struct Collective
         }
         else
         {
-            cc_tokenizer::allocator<E>().deallocate(ptr, (*this).getShape().getN());
+            cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
             ptr = NULL;
 
             throw ala_exception("Collective::operator-() Error: Cannot subtract matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, *((*this).getShape().copy())};
+        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()};
     }
 
     bool operator== (Collective<E>& other)
@@ -1067,22 +1067,22 @@ struct Collective
             //ret.shape = *dim_head;
             //ret.ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a.ptr[this->shape.getNumberOfLinks()] + b.ptr[other.shape.getNumberOfLinks()])));
 
-            ret = Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]))), *dim_head};
+            ret = Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*n*(a[/*this->*/ shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]))), *dim_head};
         
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
             {
-                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a[this->shape.getNumberOfLinks()]; j++)
+                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a[/*this->*/ shape.getNumberOfLinks()]; j++)
                 {
                     //ret.ptr[i*(a.ptr[this->shape.getNumberOfLinks()] + b.ptr[other.shape.getNumberOfLinks()]) + j] = this->ptr[j];
 
-                    ret.ptr[i*(a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]) + j] = this->ptr[j];
+                    ret.ptr[i*(a[/*this->*/ shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]) + j] = this->ptr[j];
                 }
 
                 for (cc_tokenizer::string_character_traits<char>::size_type j = a[this->shape.getNumberOfLinks()]; j < a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]; j++)
                 {
                     //ret.ptr[i*(a.ptr[this->shape.getNumberOfLinks()] + b.ptr[other.shape.getNumberOfLinks()]) + j] = other.ptr[j - a.ptr[this->shape.getNumberOfLinks()]];
 
-                    ret.ptr[i*(a[this->shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]) + j] = other.ptr[j - a[this->shape.getNumberOfLinks()]];
+                    ret.ptr[i*(a[/*this->*/ shape.getNumberOfLinks()] + b[other.shape.getNumberOfLinks()]) + j] = other.ptr[j - a[/*this->*/ shape.getNumberOfLinks()]];
                 }
             }
         }
@@ -1294,7 +1294,7 @@ struct Collective
             throw ala_exception("Collective::slice() Error: The slice length 'n' must be greater than zero.");
         }
 
-        if ((i + n) > shape.getN())
+        if ((i + n) > /*shape.getN()*/ getShape().getN())
         {
             throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data.");
         }
