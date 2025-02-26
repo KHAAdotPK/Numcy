@@ -445,9 +445,9 @@ static std::random_device rd;
                     Return random integers from low (inclusive) to high (exclusive).
                  */
                 //static int* randint(int, int, DIMENSIONS shape = {1, 1, NULL, NULL}) throw(ala_exception);
-                static int* randint(int low, int high, DIMENSIONS shape) throw (ala_exception)
+                static int* randint(int low, int high, DIMENSIONS like) throw (ala_exception)
                 {
-                    cc_tokenizer::string_character_traits<char>::size_type n = shape.getN();
+                    cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
 
                     if (n == 0)
                     {
@@ -596,7 +596,7 @@ static std::random_device rd;
          * Returns an array like the instance of DIMENSIONS passed
          */
         template <typename E = float, typename OutType = float>
-        OutType* arange(E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = {1, 1, NULL, NULL}) const throw (ala_exception)
+        OutType* arange(E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = DIMENSIONS{1, 1, NULL, NULL}) const throw (ala_exception)
         {            
             return arange<E, OutType>(0, stop, step, like);
         }
@@ -613,7 +613,7 @@ static std::random_device rd;
         * Returns an array like the instance of DIMENSIONS passed 
         */
         template <typename E = float, typename OutType = float>
-        static OutType* arange(E start /*= 0*/, E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = {1, 1, NULL, NULL}) throw (ala_exception)
+        static OutType* arange(E start /*= 0*/, E stop, E step = 1 /*NUMCY_DTYPE dtype = NUMCY_DTYPE_FLOAT*/, DIMENSIONS like = DIMENSIONS{1, 1, NULL, NULL}) throw (ala_exception)
         {               
             if ((stop - start)/step > like.getN())
             {   
@@ -795,7 +795,7 @@ static std::random_device rd;
         static struct Collective<E> concatenate_old(struct Collective<E> a, struct Collective<E> b, AXIS axis=AXIS_COLUMN) throw (ala_exception)
         {  
             E *ptr = NULL;
-            struct Collective<E> ret = {NULL, {0, 0, NULL, NULL}};
+            struct Collective<E> ret =  Collective<E>{NULL,  DIMENSIONS{0, 0, NULL, NULL}};
 
             //a.shape.getDimensionsOfArray().compare(b.shape.getDimensionsOfArray());
             /*
@@ -853,7 +853,7 @@ static std::random_device rd;
                         ptr[i*a.getShape().getNumberOfColumns() + a.getShape().getNumberOfColumns() + i] = b[i];                        
                     }
 
-                    ret = Collective<E>{ptr, {a.getShape().getNumberOfColumns() + 1, a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns() + 1, a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
 
                 break;
             }
@@ -866,9 +866,9 @@ static std::random_device rd;
         {
             cc_tokenizer::allocator<char> alloc_obj;
 
-            struct Collective<E> ret = {reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*x.shape.getN())), {x.shape.getNumberOfColumns(), x.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+            struct Collective<E> ret =  Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E) * x.getShape().getN() /*x.shape.getN()*/  )), DIMENSIONS{/*x.shape.getNumberOfColumns()*/ x.getShape().getNumberOfColumns(), /*x.shape.getNumberOfRows().getNumberOfInnerArrays()*/ x.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.shape.getN(); i++)
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN() /*x.shape.getN()*/; i++)
             {
                 ret[i] = std::cos(x[i]);
             }
@@ -1034,7 +1034,7 @@ static std::random_device rd;
                 }
                   
                 // Initialize result matrix to zero
-                memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.shape.getNumberOfColumns()));
+                memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() * /*b.shape.getNumberOfColumns()*/ b.getShape().getNumberOfColumns()));
                 
                 // Perform matrix multiplication
                 try                 
@@ -1216,7 +1216,7 @@ static std::random_device rd;
                 ptr[i] = 1;
             }
                     
-            return {ptr, {dim.getNumberOfColumns() , dim.getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            return Collective<e>{ptr, DIMENSIONS{dim.getNumberOfColumns() , dim.getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
         }
 
         /*  
@@ -1272,7 +1272,7 @@ static std::random_device rd;
                 }
             }
  
-            return Collective<E> {ptr, DIMENSIONS{m2.getShape().getNumberOfColumns(), m1.getShape().getNumberOfColumns(), NULL, NULL}};
+            return Collective<E>{ptr, DIMENSIONS{m2.getShape().getNumberOfColumns(), m1.getShape().getNumberOfColumns(), NULL, NULL}};
         }
         
         /*
@@ -1884,7 +1884,7 @@ static std::random_device rd;
                 }
             }
 
-            return Collective<E>{ptr, {m.getShape().getNumberOfColumns(), m.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            return Collective<E>{ptr, DIMENSIONS{m.getShape().getNumberOfColumns(), m.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
         }
                                                                 
         /*            
@@ -1914,9 +1914,9 @@ static std::random_device rd;
             - The 'columnsOrRowMajor' parameter allows specifying the memory layout of the array (row-major or column-major) for advanced use cases.
          */
         template <typename E = double>
-        static Collective<E> zeros(DIMENSIONS shape, REPLIKA_ROW_MAJOR_OR_COLUMN_MAJOR columnsOrRowMajor = REPLIKA_ROW_MAJOR) throw (ala_exception)
+        static Collective<E> zeros(DIMENSIONS like, REPLIKA_ROW_MAJOR_OR_COLUMN_MAJOR columnsOrRowMajor = REPLIKA_ROW_MAJOR) throw (ala_exception)
         {
-            cc_tokenizer::string_character_traits<char>::size_type n = shape.getN();
+            cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                         
             // n should not be zero
             if (n == 0)
@@ -1940,13 +1940,13 @@ static std::random_device rd;
                 ptr[i] = 0x00;
             }
             
-            return Collective<E>{ptr, /*shape.copy()*/ shape};
+            return Collective<E>{ptr, /*like.copy()*/ like};
         }
 
         template <typename E = float>
-        static E* zeros_old(DIMENSIONS shape, REPLIKA_ROW_MAJOR_OR_COLUMN_MAJOR columnsOrRowMajor = REPLIKA_ROW_MAJOR) throw (ala_exception)
+        static E* zeros_old(DIMENSIONS like, REPLIKA_ROW_MAJOR_OR_COLUMN_MAJOR columnsOrRowMajor = REPLIKA_ROW_MAJOR) throw (ala_exception)
         {
-            cc_tokenizer::string_character_traits<char>::size_type n = shape.getN();
+            cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
             E* ptr = NULL;
 
             // n should not be zero

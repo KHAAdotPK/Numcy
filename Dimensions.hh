@@ -88,7 +88,8 @@ typedef struct Dimensions
     {
     }
 
-    Dimensions(Dimensions* ref) : columns(ref->columns), rows(ref->rows), next(ref->next), prev(ref->prev), reference_count(0)
+    // The caller should have called the incrementReferemceCount() already
+    Dimensions(Dimensions* ref) : columns(ref->columns), rows(ref->rows), next(ref->next), prev(ref->prev), reference_count(ref->reference_count)
     {
     }
 
@@ -214,8 +215,10 @@ typedef struct Dimensions
                 ret->prev = NULL;
                 /* Wrong doing */
                 //*ret = Dimensions {0, getDimensionsOfArray()[i], NULL, NULL};
-                
+
                 current = ret;
+                
+                current->reference_count = 0;
             }
             else
             {
@@ -228,11 +231,13 @@ typedef struct Dimensions
                 //*(current->next) = Dimensions {0, getDimensionsOfArray()[i], NULL, current}; 
 
                 current = current->next;
+
+                current->reference_count = 0;
             }
         }
 
         current->columns = getDimensionsOfArray()[getDimensionsOfArray().size() - 1];
-
+        
         return ret;
     }
 
