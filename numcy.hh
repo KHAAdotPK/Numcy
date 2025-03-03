@@ -1183,7 +1183,7 @@ static std::random_device rd;
                     }
                     catch (ala_exception& e)
                     {
-                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean() Error: ") + cc_tokenizer::String<char>(e.what()));                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean() -> ") + cc_tokenizer::String<char>(e.what()));                        
                     }
                                         
                 break;
@@ -1208,15 +1208,30 @@ static std::random_device rd;
                 throw ala_exception("Numcy::ones() Error: Dimensional data is empty. Unable to proceed.");
             }
 
-            //ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate(n));
-            ptr = cc_tokenizer::allocator<E>().allocate(n);
-
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
+            try
             {
-                ptr[i] = 1;
+                //ptr = reinterpret_cast<E*>(cc_tokenizer::allocator<E>().allocate(n));
+                ptr = cc_tokenizer::allocator<E>().allocate(n);
+
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
+                {
+                    ptr[i] = 1;
+                }
             }
-                    
-            return Collective<e>{ptr, DIMENSIONS{dim.getNumberOfColumns() , dim.getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::ones() Error: ") + cc_tokenizer::String<char>(e.what()));               
+            }
+            catch (std::length_error& e)
+            { 
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::ones() Error: ") + cc_tokenizer::String<char>(e.what()));                          
+            }
+            catch (ala_exception& e)
+            { 
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::ones() -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+                                                       
+            return Collective<E>{ptr, DIMENSIONS{dim.getNumberOfColumns() , dim.getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
         }
 
         /*  
@@ -1929,17 +1944,24 @@ static std::random_device rd;
             try 
             {
                 ptr = cc_tokenizer::allocator<E>().allocate(n);
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
+                {
+                    ptr[i] = 0x00;
+                }
             }
             catch (std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::zeros() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
-
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < n; i++)
+            catch (std::length_error& e)
             {
-                ptr[i] = 0x00;
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::zeros() Error: ") + cc_tokenizer::String<char>(e.what()));  
             }
-            
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::zeros() -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+                        
             return Collective<E>{ptr, /*like.copy()*/ like};
         }
 

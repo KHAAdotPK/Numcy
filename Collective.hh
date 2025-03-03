@@ -376,10 +376,10 @@ struct Collective
             /*
                 To stop the effects of double deletion... becuse we are explicitly calling(like may be in the case of "placement new") the destructor method of this object
              */
-            if (ptr != NULL)
-            {                            
+            if (ptr != NULL)            
+            {                                            
                 cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-
+                
                 /* 
                     TODO, causing problems, find where?
                  */     
