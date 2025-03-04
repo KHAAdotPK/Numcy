@@ -1110,6 +1110,150 @@ static std::random_device rd;
             return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
         }
 
+        /**
+         * @brief Computes the mean of elements in a Collective array along a specified axis.
+         *
+         * This function calculates the mean of elements in the input array `a` based on the specified `axis`:
+         * - If `axis = AXIS_NONE`, the mean is computed over all elements in the array (flattened into a single sequence).
+         * - If `axis = AXIS_COLUMN`, the mean is computed for each column (across rows).
+         * - If `axis = AXIS_ROWS`, the mean is computed for each row (across columns).
+         *
+         * The function handles memory allocation and deallocation internally and throws exceptions in case of errors.
+         *
+         * @tparam E The data type of the elements in the Collective array (default is `double`).
+         * @param a The input Collective array for which the mean is to be computed.
+         * @param axis The axis along which the mean is computed. Default is `AXIS_NONE`.
+         * @return Collective<E> A new Collective array containing the computed mean(s).
+         * @throws ala_exception If:
+         *                      - The input array has a malformed shape.
+         *                      - Memory allocation fails.
+         *                      - A length error occurs during computation.
+         *                      - Any other exception is encountered during processing.
+         *
+         * @note The function uses the `cc_tokenizer::allocator` for memory management and assumes the input array
+         *       is properly initialized with valid dimensions.
+         *
+         * Example Usage:
+         *     Collective<double> arr = ...; // Initialize array
+         *     Collective<double> result = Numcy::mean(arr, AXIS_COLUMN); // Compute mean along columns
+         */
+        template <typename E = double>
+        static Collective<E> mean(Collective<E>& a, AXIS axis = AXIS_NONE) throw (ala_exception)
+        {
+            if (!a.getShape().getN())
+            {
+                throw ala_exception("Numcy::mean() Error: The input array has an invalid or malformed shape. Ensure the array is properly initialized with valid dimensions before calling this function.");                
+            }
+
+            E* ptr = NULL;
+            Collective<E> ret;
+
+            switch (axis)
+            {
+                case AXIS_NONE: // Entire array is flattened into a single sequence of values, and the mean is computed over all those values
+                {
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(1);
+
+                        *ptr = 0;
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                        {
+                            ptr[0] = ptr[0] + a[i];
+                        }
+
+                        ptr[0] = ptr[0] / a.getShape().getN();
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_NONE) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_NONE) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ret = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+                }
+                break;
+                case AXIS_COLUMN: // operation is performed vertically (across rows for each column), number of rows is divisor, sum of each column is divided by number of rows
+                {
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfColumns());
+
+                        memset(ptr, 0, sizeof(E)*a.getShape().getNumberOfColumns());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                            {
+                                ptr[i] = ptr[i] + a[j*a.getShape().getNumberOfColumns() + i];
+                            }
+
+                            ptr[i] = ptr[i] / a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                        }
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
+                }
+                break;
+                case AXIS_ROWS: // Computing the mean for each row individually
+                {
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+
+                        memset(ptr, 0, sizeof(E)*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                            {
+                                ptr[i] = ptr[i] + a[i*a.getShape().getNumberOfColumns() + j];
+                            }
+
+                            ptr[i] = ptr[i] / a.getShape().getNumberOfColumns();
+                        }                        
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_ROWS) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL}}; 
+                }
+                break;                
+            }
+
+            return ret;
+        }
+
         template<typename E = double, typename F = cc_tokenizer::string_character_traits<char>::size_type>
         static Collective<E> mean(Collective<E>& a, Collective<F>& like, AXIS axis = AXIS_ROWS) throw (ala_exception)
         {
@@ -1123,6 +1267,32 @@ static std::random_device rd;
 
             switch (axis)
             {
+                case AXIS_NONE:
+                {
+
+                }
+                break;
+                case AXIS_COLUMN: // operation is performed vertically (across rows for each column), number of rows is divisor, sum of each column is divided by number of rows
+                {
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfColumns());
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_COLUMN) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    
+                }
+                break;
                 case AXIS_ROWS:
                     try
                     {  
