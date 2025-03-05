@@ -1111,6 +1111,173 @@ static std::random_device rd;
         }
 
         /**
+         * @brief Computes the variance of elements in a Collective array along a specified axis.
+         *
+         * This function calculates the variance of elements in the input array `a` based on the specified `axis`:
+         * - If `axis = AXIS_NONE`, the variance is computed over all elements in the array (flattened into a single sequence).
+         * - If `axis = AXIS_ROWS`, the variance is computed for each row (across columns).
+         * - If `axis = AXIS_COLUMN`, the variance is computed for each column (across rows).
+         *
+         * The function requires a precomputed `mean` array, which must match the shape of the input array along the specified axis.
+         * It handles memory allocation and deallocation internally and throws exceptions in case of errors.
+         *
+         * @tparam E The data type of the elements in the Collective array (default is `double`).
+         * @param a The input Collective array for which the variance is to be computed.
+         * @param mean The precomputed mean array, which must match the shape of the input array along the specified axis.
+         * @param axis The axis along which the variance is computed. Default is `AXIS_NONE`.
+         * @return Collective<E> A new Collective array containing the computed variance(s).
+         * @throws ala_exception If:
+         *                      - The input array has an invalid or malformed shape.
+         *                      - The `mean` array does not match the expected shape for the specified axis.
+         *                      - Memory allocation fails.
+         *                      - A length error occurs during computation.
+         *                      - Any other exception is encountered during processing.
+         *
+         * @note The function uses the `cc_tokenizer::allocator` for memory management and assumes the input array
+         *       and `mean` array are properly initialized with valid dimensions.
+         *
+         * Example Usage:
+         *     Collective<double> arr = ...; // Initialize array
+         *     Collective<double> mean = Numcy::mean(arr, AXIS_ROWS); // Compute mean along rows
+         *     Collective<double> variance = Numcy::variance(arr, mean, AXIS_ROWS); // Compute variance along rows
+         */
+        template <typename E = double>
+        static Collective<E> variance(Collective<E>& a, Collective<E>& mean, AXIS axis = AXIS_NONE) throw (ala_exception)
+        {
+            if (!a.getShape().getN())
+            {
+                throw ala_exception("Numcy::variance() Error: The input array has an invalid or malformed shape. Ensure the array is properly initialized with valid dimensions before calling this function.");                
+            }
+
+            E* ptr = NULL;
+            Collective<E> ret;
+
+            switch (axis)
+            {
+                case AXIS_NONE:
+                {
+                    if (!(mean.getShape().getN() == 1))
+                    {                        
+                        throw ala_exception("Numcy::variance() Error: The 'mean' tensor must be a scalar (shape.getN() = 1) when axis = AXIS_NONE. Ensure that the mean is computed correctly and has the expected shape before calling this function.");
+                    }
+
+                    try
+                    {   
+                        ptr = cc_tokenizer::allocator<E>().allocate(1);
+
+                        *ptr = 0;
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                        {
+                            ptr[0] = ptr[0] + (a[i] - mean[0])*(a[i] - mean[0]); 
+                        }
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_NONE) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_NONE) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_NONE) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ptr[0] = ptr[0] / a.getShape().getN();
+                    
+                    ret = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+                }
+                break;
+                case AXIS_ROWS:
+                {  
+                    if (!(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == mean.getShape().getNumberOfColumns()))
+                    {
+                        cc_tokenizer::String<char> message = cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) Error: Dimension mismatch. The number of rows in the input array ") + cc_tokenizer::String<char>(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>(" does not match the number of columns in the mean array ") + cc_tokenizer::String<char>(mean.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>(". Ensure the mean array is computed correctly for AXIS_ROWS.");
+
+                        throw ala_exception(message);
+                    }
+
+                    try
+                    {   
+                        ptr = cc_tokenizer::allocator<E>().allocate(mean.getShape().getN());
+
+                        memset(ptr, 0, sizeof(E)*mean.getShape().getN());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                            {                                
+                                ptr[i] = ptr[i] + (a[i*a.getShape().getNumberOfColumns() + j] - mean[i])*(a[i*a.getShape().getNumberOfColumns() + j] - mean[i]);
+                            }                            
+
+                            ptr[i] = ptr[i] / a.getShape().getNumberOfColumns();
+                        }                        
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL}};
+                }
+                break;
+                case AXIS_COLUMN:
+                {
+                    if (!(a.getShape().getNumberOfColumns() == mean.getShape().getNumberOfColumns()))
+                    {
+                        cc_tokenizer::String<char> message = cc_tokenizer::String<char>("Numcy::variance(AXIS_COLUMN) Error: Dimension mismatch. The number of columns in the input array ") + cc_tokenizer::String<char>(a.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>(" does not match the number of columns in the mean array ") + cc_tokenizer::String<char>(mean.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>(". Ensure the mean array is computed correctly for AXIS_COLUMN.");
+
+                        throw ala_exception(message);
+                    }
+                    
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(mean.getShape().getN());
+
+                        memset(ptr, 0, sizeof(E)*mean.getShape().getN());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < mean.getShape().getN(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                            {
+                                ptr[i] = ptr[i] + (a[j*a.getShape().getNumberOfColumns() + i] - mean[i])*(a[j*a.getShape().getNumberOfColumns() + i] - mean[i]);                            
+                            }
+
+                            ptr[i] = ptr[i] / a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                        }
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::length_error& e)
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_COLUMN) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_COLUMN) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
+                }                    
+                break;
+            }
+
+            return ret;
+        }
+
+        /**
          * @brief Computes the mean of elements in a Collective array along a specified axis.
          *
          * This function calculates the mean of elements in the input array `a` based on the specified `axis`:
