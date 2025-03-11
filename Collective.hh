@@ -323,8 +323,8 @@ struct Collective
                     I am compiling this program with cl(Visual Studio Tools) and when the following
                     statement gets executed whole program just crashes.
 
-                    Naively I provided a constructor for this class which takes the refeence_count as an one of its arguments.
-                    The idea is that a the time if instanciation you set the reference count to 1, and then during the ife time of the instanciated object 
+                    Naively I provided a constructor for this class which takes the reference_count as an one of its arguments.
+                    The idea is that at the time of instanciation you set the reference count to 1, and then during the ife time of the instanciated object 
                     you call this method(the decrement reference count) in the hope that object resources get collected in safe manner,
                     but even then program crashes when I call this decrementReferenceCount() method.
                  */
@@ -794,6 +794,42 @@ struct Collective
         return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()};
     }
 
+    /**
+     * @brief Overloaded subtraction operator for the `Collective` class.
+     *
+     * This function performs element-wise subtraction between the current `Collective` object (minuend)
+     * and another `Collective` object (subtrahend). It supports two cases:
+     * 1. Scalar subtraction: If the subtrahend is a scalar (shape = 1), it subtracts the scalar value
+     *    from every element of the minuend.
+     * 2. Matrix subtraction: If the subtrahend has the same shape as the minuend, it performs
+     *    element-wise subtraction between the two matrices.
+     *
+     * @tparam F The data type of the subtrahend (default: double).
+     * @param subtrahend The `Collective` object to subtract from the current object.
+     *
+     * @return A new `Collective` object containing the result of the subtraction.
+     *
+     * @throws ala_exception Throws an exception under the following conditions:
+     *   - If the minuend (current object) has a malformed shape (empty or invalid).
+     *   - If memory allocation fails during the operation.
+     *   - If the subtrahend is not a scalar and its shape does not match the minuend's shape.
+     *
+     * @note The function ensures proper memory management by deallocating temporary memory
+     *       in case of exceptions or errors.
+     *
+     * Example usage:
+     * @code
+     * Collective<double> A = {1.0, 2.0, 3.0};
+     * Collective<double> B = {0.5, 1.5, 2.5};
+     * Collective<double> result = A - B; // Element-wise subtraction
+     * @endcode
+     *
+     * @code
+     * Collective<double> A = {1.0, 2.0, 3.0};
+     * Collective<double> scalar = {0.5};
+     * Collective<double> result = A - scalar; // Scalar subtraction
+     * @endcode
+    */
     template <typename F = double>
     Collective<E> operator- (Collective<F>& subtrahend) throw (ala_exception)
     {   
@@ -806,22 +842,22 @@ struct Collective
 
         try
         {
-            ptr = cc_tokenizer::allocator<E>().allocate(/*(*this).getShape().getN()*/ getShape().getN());
+            ptr = cc_tokenizer::allocator<E>().allocate(getShape().getN());
         }
         catch (std::bad_alloc& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());    
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() Error: ") + e.what());    
         }
         catch (std::length_error& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() Error: ") + e.what());
         }
 
         if (subtrahend.getShape().getN() == 1)
         {
             try
             {                                        
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < /*(*this).getShape().getN()*/ getShape().getN(); i++)
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getN(); i++)
                 {
                     ptr[i] = (*this)[i] - (E)(subtrahend[0]);
                 }
@@ -831,7 +867,7 @@ struct Collective
                 cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
                 ptr = NULL;
 
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () -> ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
             }
         }
         else if ((*this).getShape() == subtrahend.getShape())
@@ -845,7 +881,7 @@ struct Collective
             }
             catch (ala_exception& e)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
+                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
                 ptr = NULL;
 
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
@@ -859,7 +895,7 @@ struct Collective
             throw ala_exception("Collective::operator-() Error: Cannot subtract matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()};
+        return Collective<E>{ptr, getShape()};
     }
 
     bool operator== (Collective<E>& other)
@@ -888,30 +924,79 @@ struct Collective
         std::cout<<"getN = "<<this->shape.getN()<<std::endl;         
     }
      */
-    
-    /*
+        
     template <typename F = double>
     Collective<F> operator+ (F a) throw (ala_exception)
     {   
-        Collective<F> ret;
+        /*static_assert(!std::is_same<F, Collective<typename F::value_type>>::value, 
+            "E must not be a Collective type.");*/
+
+        F* ptr = NULL;
+        Collective<E> ret;
 
         try
         {
-            F* ptr = cc_tokenizer::allocator<F>().allocate(1);
-            ret = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+            // Allocate memory for the scalar value
+            ptr = cc_tokenizer::allocator<F>().allocate(1);
+            ptr[0] = a;
+            /**
+             *  Nested Type Issue
+             *  --------------------
+             *  -----------------------
+             *  The fact that explicitly creating a temp object works while using a temporary object directly
+             *  fails strongly supports Following arguments.... 
+             */    
+            /** 
+             *  In the statement ret = ((*this) + Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}});, 
+             *  the expression Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}} creates an instance of type 
+             *  Collective<E>.
+             *  The template argument deduction allows the compiler to automatically determine the template 
+             *  arguments based on the types of the arguments passed to a templated function.
+             *  if E is double then, in the statement ret = ((*this) + Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}}); 
+             *  the expression "(*this) +" is deducing the type of argumnet at right as Collective<Collective<double>> 
+             *  instead of a Collective<double>. This nested type is then passed to the assignment operator,
+             *  which expects a Collective<double>, leading to the type mismatch error.
+             */                        
+            // Create a temporary Collective<E> object to hold the scalar value            
+            Collective<E> temp = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+            // Perform element-wise addition            
+            ret = (*this) + temp;
+            /** 
+             *  THIS DOES NOT WORK(the failing version), WHY?
+             *  ------------------------------------------------
+             *  ret = ((*this) + Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}});
+             *  This version fails strongly suggests that the issue is related to how the compiler handles 
+             *  temporary objects and type deduction in the context of the operator+ function.
+             *  TEMPORARY OBJECT CREATION
+             *  ----------------------------
+             *  In the working version, the "temp" is explicitly created as a Collective<E>. 
+             *  The compiler knows the exact type of temp and uses it in the operator+ call.
+             *  In the failing version Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}} is a 
+             *  temporary object. The compiler might treat it differently during template 
+             *  argument deduction, leading to unexpected behavior.
+             */
+             /**
+              *  The failing version suggests that the compiler might be treating the temporary object as a
+              *  nested type (Collective<Collective<E>>) instead of a flat type (Collective<E>).
+              *  This is likely due to how the "operator+"" function is implemented(it seems that implementation has no problems)
+              *  or how the compiler handles temporary objects in template deduction.
+              */        
         }
         catch(const std::bad_alloc& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ () Error: ") + cc_tokenizer::String<char>(e.what()));
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + cc_tokenizer::String<char>(e.what()));
         }
         catch (const std::length_error& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ () Error: ") + cc_tokenizer::String<char>(e.what()));
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + cc_tokenizer::String<char>(e.what()));
         }
-
-        return ret;         
-    }
-     */
+        catch (ala_exception& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + cc_tokenizer::String<char>(e.what()));
+        }
+         
+        return ret;        
+    }    
 
     /**
      * @brief Overloaded addition operator for combining two Collective objects.
@@ -937,6 +1022,9 @@ struct Collective
      */
     Collective<E> operator+ (Collective<E>& other) throw (ala_exception)
     {
+        /*static_assert(!std::is_same<E, Collective<typename E::value_type>>::value, 
+            "E must not be a Collective type.");*/
+
         /*
             No need, left and right oprands can be same instances
          */
@@ -947,7 +1035,7 @@ struct Collective
         
         if (!(other.getShape().getN() > 0))
         {
-            throw ala_exception("Collective::operator + () Error: The 'other' Collective has an invalid shape with zero elements.");
+            throw ala_exception("Collective::operator+() Error: The 'other' Collective has an invalid shape with zero elements.");
         }
 
         E* local_ptr = NULL;
@@ -955,6 +1043,7 @@ struct Collective
         
         if (other.getShape().getN() == 1)
         {
+            // Scalar addition
             try
             {
                 local_ptr = cc_tokenizer::allocator<E>().allocate(getShape().getN());
@@ -962,23 +1051,24 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[0];
                 }
-                ret = Collective<E>{local_ptr, *(getShape().copy())};
+                ret = Collective<E>{local_ptr, getShape().copy()};
             }
             catch (const std::bad_alloc& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());
             }
             catch (const std::length_error& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () -> ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + e.what());
             }
         }
         else if (getShape() == other.getShape())
         {
+            // Element-wise addition
             try
             {
                 local_ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
@@ -986,28 +1076,29 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[i];
                 }
-                ret = Collective<E>{local_ptr, *(other.getShape().copy())};
+                ret = Collective<E>{local_ptr, other.getShape().copy()};
             }
             catch (const std::bad_alloc& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());
             }
             catch (const std::length_error& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () Error: ") + e.what());                
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());                
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator + () -> ") + e.what());
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + e.what());
             }
         }
         else
         {
-            throw ala_exception("Collective::operator + () Error: The shapes of the two collectives are incompatible for addition.");
+            throw ala_exception("Collective::operator+() Error: The shapes of the two collectives are incompatible for addition.");
         }
 
         return ret;
-    } 
+    }
+     
     Collective<E> operator_plus (Collective<E>& other) 
     {
         cc_tokenizer::allocator<char> alloc_obj;
