@@ -648,10 +648,198 @@ struct Collective
 
             return Collective<F>{NULL, DIMENSIONS{0, 0, NULL, NULL}};
         }
-
-        // Overloading the binary * operator for multiplying two Collective instances
+        
+        /**
+         * @brief Overloads the binary * operator to multiply two Collective instances.
+         *
+         * This function handles element-wise multiplication and broadcasting between matrices of 
+         * different shapes, ensuring compatibility before performing the operation. It supports:
+         * 
+         * 1. **Direct Multiplication:** If both matrices have the same shape, element-wise multiplication occurs.
+         * 2. **Row Broadcasting:** If one operand is a row vector (1D array), it is expanded to match 
+         *    the number of rows of the other matrix before multiplication.
+         * 3. **Column Broadcasting:** If one operand is a column vector, it is expanded to match the 
+         *    number of columns of the other matrix before multiplication.
+         * 4. **Exception Handling:** If memory allocation fails or dimensions are incompatible, an 
+         *    `ala_exception` is thrown with an appropriate error message.
+         *
+         * The function first attempts to reshape operands if necessary and then calls `Numcy::dot()` 
+         * to perform the matrix multiplication.
+         *
+         * @tparam E The element type of the matrices.
+         * @param other The right-hand side operand for multiplication.
+         * @return A new `Collective<E>` instance representing the result.
+         * @throws ala_exception If memory allocation fails or if the matrices have incompatible shapes.
+         */
         Collective<E> operator* (Collective<E>& other) throw (ala_exception)
-        {         
+        {               
+            /*
+                BROADCAST ACROSS CORRECT AXIS
+                In matrix broadcasting, element-wise operations happen between arrays of different shapes.
+                The transformation (broadcasting) is not limited to multiplication—it can involve addition, 
+                division, or other operations.
+                "multiplicand" and "multiplier" might not be the best terms in a general broadcasting context.
+                The transformation (broadcasting) is not limited to multiplication. It can involve addition, division, or other operations.
+                So instead of "multiplicand" and "multiplier," it's better to use:
+                - "Left operand" and "Right operand"
+                - "Primary matrix" and "Broadcasted matrix"
+                - "Input tensor" and "Scaling tensor" (in deep learning)
+             */
+            Collective<E> left_operand, right_operand;
+
+            /*
+                Automatically broadcast across rows axis:
+                Reshape so that a row vector has same number of rows as the other oprand matrix 
+             */
+            if (getShape().getNumberOfColumns() == other.getShape().getNumberOfColumns())
+            {
+                if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() != other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                {
+                    if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                    {
+                        // Reshape current operand (Left-hand operand) to match other operand's rows
+                        // Reshape receiver operand (Left hand oprand or multiplicand)
+                        try 
+                        {
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[i*getShape().getNumberOfColumns() + j] = (*this)[j];    
+                                }
+                            }
+
+                            //*this = Collective<E>{ptr, other.getShape().copy()};
+                            left_operand = Collective<E>{ptr, other.getShape().copy()};
+
+                            return Numcy::dot(left_operand, other);
+                        }
+                        catch (std::bad_alloc& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch (std::length_error& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch(ala_exception e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                    }
+                    else if (other.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                    {   
+                        // Reshape other operand (Right-hand operand) to match current operand's rows
+                        // Reshape multiplier opernad (right hand oprand)
+                        try 
+                        {
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[i*getShape().getNumberOfColumns() + j] = other[j];    
+                                }
+                            }
+
+                            //other = Collective<E>{ptr, other.getShape().copy()};
+                            right_operand = Collective<E>{ptr, getShape().copy()};
+
+                            return Numcy::dot(*this, right_operand);
+                        }
+                        catch (std::bad_alloc& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch (std::length_error& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch(ala_exception e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                    }
+                }
+            }
+            /*
+                Automatically broadcast across column axis:
+                Reshape so that a column vector has same number of columns as the other oprand matrix    
+             */
+            else if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            {
+                if (getShape().getNumberOfColumns() != other.getShape().getNumberOfColumns())
+                {
+                    if (getShape().getNumberOfColumns() == 1)
+                    {
+                        // Reshape current operand (Left-hand operand) to match other operand's columns
+                        // Reshape receiver operand (Left hand operand or multiplicand)
+                        try 
+                        {
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[i*other.getShape().getNumberOfColumns() + j] = (*this)[0];    
+                                }
+                            }
+
+                            //*this = Collective<E>{ptr, other.getShape().copy()};
+                            left_operand = Collective<E>{ptr, other.getShape().copy()};
+
+                            return Numcy::dot(left_operand, other);
+                        }
+                        catch (std::bad_alloc& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch (std::length_error& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch(ala_exception e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                    }
+                    else if (other.getShape().getNumberOfColumns() == 1)
+                    {
+                        // Reshape other operand (Right-hand operand) to match current operand's columns
+                        // Reshape multiplier opernad (right hand operand)
+                        try 
+                        {
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            {
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
+                                {
+                                    ptr[i*getShape().getNumberOfColumns() + j] = other[0];    
+                                }
+                            }
+
+                            //other = Collective<E>{ptr, other.getShape().copy()};
+                            right_operand = Collective<E>{ptr, getShape().copy()};
+
+                            return Numcy::dot(*this, right_operand);
+                        }
+                        catch (std::bad_alloc& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch (std::length_error& e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                        catch(ala_exception e)
+                        {
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                        }
+                    }
+                }
+            }
+
             try
             {                
                 return Numcy::dot(*this, other);                
@@ -1037,6 +1225,183 @@ struct Collective
         {
             throw ala_exception("Collective::operator+() Error: The 'other' Collective has an invalid shape with zero elements.");
         }
+
+        /*
+            BROADCAST ACROSS CORRECT AXIS
+            In matrix broadcasting, element-wise operations happen between arrays of different shapes.
+            The transformation (broadcasting) is not limited to multiplication—it can involve addition, 
+            division, or other operations.            
+            It's better to use:
+            - "Left operand" and "Right operand"
+            - "Primary matrix" and "Broadcasted matrix"
+            - "Input tensor" and "Scaling tensor" (in deep learning)
+         */
+         Collective<E> left_operand, right_operand;
+
+         /*
+            Automatically broadcast across rows axis:
+            Reshape so that a row vector has same number of rows as the other oprand matrix 
+          */
+         if (getShape().getNumberOfColumns() == other.getShape().getNumberOfColumns())
+         {
+            if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() != other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            {
+                if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                {
+                    // Reshape current operand (Left-hand operand) to match other operand's rows
+                    // Reshape receiver operand (Left hand oprand or multiplicand)
+                    try 
+                    {
+                        E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
+                            {
+                                //ptr[i*getShape().getNumberOfColumns() + j] = (*this)[j];
+                                
+                                ptr[i*getShape().getNumberOfColumns() + j] = (*this)[j] + other[i*getShape().getNumberOfColumns() + j]; 
+                            }
+                        }
+
+                        //*this = Collective<E>{ptr, other.getShape().copy()};
+                        left_operand = Collective<E>{ptr, other.getShape().copy()};
+
+                        //return Numcy::dot(left_operand, other);
+
+                        return left_operand;
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                    catch (std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                    catch(ala_exception e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                }
+                else if (other.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                {   
+                    // Reshape other operand (Right-hand operand) to match current operand's rows
+                    // Reshape multiplier opernad (right hand oprand)
+                    try 
+                    {
+                        E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        {
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
+                            {
+                                //ptr[i*getShape().getNumberOfColumns() + j] = other[j]; 
+
+                                ptr[i*getShape().getNumberOfColumns() + j] = (*this)[i*getShape().getNumberOfColumns() + j] + other[j];
+                            }
+                        }
+
+                        //other = Collective<E>{ptr, other.getShape().copy()};
+                        right_operand = Collective<E>{ptr, getShape().copy()};
+
+                        //return Numcy::dot(*this, right_operand);
+
+                        return right_operand;
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                    catch (std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                    catch(ala_exception e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                    }
+                }
+            }
+         }
+         /*
+            Automatically broadcast across column axis:
+            Reshape so that a column vector has same number of columns as the other oprand matrix    
+          */
+         else if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+         {
+             if (getShape().getNumberOfColumns() != other.getShape().getNumberOfColumns())
+             {
+                 if (getShape().getNumberOfColumns() == 1)
+                 {
+                     // Reshape current operand (Left-hand operand) to match other operand's columns
+                     // Reshape receiver operand (Left hand operand or multiplicand)
+                     try 
+                     {
+                         E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
+                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                         {
+                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
+                             {
+                                 ptr[i*other.getShape().getNumberOfColumns() + j] = (*this)[0] + other[i*other.getShape().getNumberOfColumns() + j];
+                             }
+                         }
+
+                         /*this = Collective<E>{ptr, other.getShape().copy()};*/
+                         left_operand = Collective<E>{ptr, other.getShape().copy()};
+
+                         //return Numcy::dot(left_operand, other);
+
+                         return left_operand;
+                     }
+                     catch (std::bad_alloc& e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                     catch (std::length_error& e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                     catch(ala_exception e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                 }
+                 else if (other.getShape().getNumberOfColumns() == 1)
+                 {
+                     // Reshape other operand (Right-hand operand) to match current operand's columns
+                     // Reshape multiplier opernad (right hand operand)
+                     try 
+                     {
+                         E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
+                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                         {
+                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
+                             {
+                                 ptr[i*getShape().getNumberOfColumns() + j] = (*this)[i*getShape().getNumberOfColumns() + j] + other[0];
+                             }
+                         }
+
+                         //other = Collective<E>{ptr, other.getShape().copy()};
+                         right_operand = Collective<E>{ptr, getShape().copy()};
+
+                         //return Numcy::dot(*this, right_operand);
+
+                         return right_operand;
+                     }
+                     catch (std::bad_alloc& e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                     catch (std::length_error& e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                     catch(ala_exception e)
+                     {
+                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                     }
+                 }
+             }
+         }
 
         E* local_ptr = NULL;
         Collective<E> ret;

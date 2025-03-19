@@ -62,18 +62,68 @@ class Numcy
         static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
         {   
             /*
-                Check if the last dimension of "a" is the same size as the second-to-last dimension of "b"
-             */            
-            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
-            {   
-                /* 
-                    Check if "b" is scalar
-                 */             
-                if (!(b.getShape().getN() == 1))
-                {                    
-                    throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product... Either number of columns of the first matrix must match the number of rows of the second matrix, or second matrix has to be a scalar.");
+                Ensure that the shapes of matrices "a" and "b" are compatible for the dot product.
+
+                1. First, check if "a" and "b" have the same shape. If they do, no further checks are needed.
+                2. If their shapes differ, verify that the number of columns in "a" matches the number of rows in "b"
+                   (i.e., the second-to-last dimension of "b").
+                3. If this condition is not met, check whether "b" is a scalar.
+                4. If "b" is neither a valid matrix for multiplication nor a scalar, throw an exception indicating
+                   that the dot product cannot be computed due to shape incompatibility.
+             */          
+            if (!(a.getShape() == b.getShape()))
+            {
+                /*
+                    Ensure the number of columns in "a" matches the number of rows in "b"
+
+                    And in terms of inner most array...                        
+                    Check if the last dimension of "a" is the same size as the second-to-last dimension of "b"
+                 */                
+                if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                {   
+                    /*                         
+                        Check if "b" is a scalar (1x1 matrix)
+                     */             
+                    if (!(b.getShape().getN() == 1))
+                    {                                            
+                        throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product. Both matrices must have the same shape for element-wise multiplication, or the number of columns in the first matrix must match the number of rows in the second matrix. Alternatively, the second matrix must be a scalar (1x1).");
+                    }
                 }
             }
+
+            std::function</*E*()*/ Collective<E>()> element_wise_multplication_func = [&a, &b]/* That is called capture list */() -> /*E**/ Collective<E>
+            {
+                //Collective<E> ret;
+
+                E* ptr = nullptr;
+
+                try 
+                {
+                    ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                    
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                    {
+                        ptr[i] = a[i] * b[i];
+                    }
+                    //ret = Collective<E>{ptr, a.getShape().copy()};                    
+                }    
+                catch(std::length_error& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (ala_exception& e)
+                {
+                    throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
+                }    
+                
+                Collective<E> ret = Collective<E>{ptr, b.getShape().copy()};
+
+                return ret;
+            };
 
             /*
                 The input matrices have compatible shapes for dot product, i.e.,
@@ -172,13 +222,18 @@ class Numcy
                 return ret;
             };
            
-            if (b.getShape().getN() == 1)
+            if (a.getShape() == b.getShape())
+            {
+                return element_wise_multplication_func();
+            }
+            else if (b.getShape().getN() == 1)
             {                   
                  return multiplier_is_scalar_func();
             }
             else 
-            {                
-                 return func();
+            {    
+                // Dot product
+                return func();
             }            
         }
         
@@ -267,7 +322,7 @@ class Numcy
                     sum = sum + x[i] *  x[i];                    
                 }
 
-                return sqrt(sum); 
+                return std::sqrt(sum); 
             }
             catch (ala_exception& e)
             {
@@ -1109,6 +1164,36 @@ static std::random_device rd;
             
             return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
         }
+
+        template<typename E = double>
+        static Collective<E> sqrt(Collective<E>& a) throw (ala_exception)
+        {
+            if (!a.getShape().getN())
+            {
+                throw ala_exception("Numcy::sqrt() Error: Malformed shape of the array received as one of the arguments");
+            }
+
+            E* ptr = NULL;
+
+            try
+            {
+                ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+                {
+                    ptr[i] = std::sqrt(a[i]);
+                }
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sqrt() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }    
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sqrt() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+                        
+            return Collective<E>{ptr, a.getShape().copy()};
+        } 
 
         /**
          * @brief Computes the variance of elements in a Collective array along a specified axis.
