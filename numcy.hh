@@ -957,6 +957,89 @@ static std::random_device rd;
             
             return Collective<E>{ptr, /*a.getShape().copy()*/ a.getShape()};
         }
+
+        /**
+         * @brief Applies dropout regularization to the input tensor.
+         * 
+         * Dropout is a regularization technique that randomly sets a fraction of input units to zero during training, 
+         * which helps prevent overfitting. The function scales the remaining values by 1 / (1 - dropOutRate) 
+         * to maintain the expected sum of activations.
+         * 
+         * @tparam E Data type of the tensor elements (e.g., float, double).
+         * @param x Input tensor.
+         * @param dropOutRate Probability of setting an element to zero (default: 0).
+         * @return A new tensor with dropout applied.
+         * 
+         * @throws ala_exception If the input tensor is empty or the dropout rate is out of range.
+         */
+        template<typename E>
+        static Collective<E> dropout(Collective<E>& x, double dropOutRate = 0) throw (ala_exception)
+        {
+            if (!x.getShape().getN())
+            {                
+                throw ala_exception("Numcy::dropout() Error: The input tensor is empty or uninitialized. Ensure that it has valid dimensions before applying ReLU.");
+            }
+
+            if (!(dropOutRate >=0 && dropOutRate <= 1))
+            {
+                throw ala_exception("Numcy::dropout() Error: Dropout rate must be a value between 0 and 1 (inclusive). Ensure that the provided rate is within this range.");
+            }
+
+            // If dropout rate is 0, return the input as is
+            if (dropOutRate == 0) 
+            {
+                 return x;
+            }
+
+            Collective<E> randomValue;
+            Collective<E> ret = x;
+
+            try
+            {                             
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+                {   
+                    // For each element in x, a random number is drawn from [0,1] 
+                    /*
+                        The current randn() function will not always generate values between 0 and 1.
+                        The current implementation of "Numcy::randn()" using std::normal_distribution<> nd(NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION);.
+                        - A normal (Gaussian) distribution generates values centered around NUMCY_DEFAULT_MEAN with a spread of NUMCY_DEFAULT_STANDARD_DEVIATION
+                        - This can generate negative values or values greater than 1, depending on the mean and standard deviation.
+                     */
+                    do
+                    {                                                             
+                        randomValue = Numcy::Random::randn<E>(DIMENSIONS{1, 1, NULL, NULL});
+                    }
+                    while (!(randomValue[0] >= 0 && randomValue[0] <= 1));
+
+                    /*
+                        The part where we randomly drop neurons (i.e., set them to zero with the given probability)
+                     */
+                    if (randomValue[0] < dropOutRate)
+                    {
+                        ret[i] = (E)0;
+                    }   
+                    else
+                    {
+                        // Scale the remaining values (neurons which are not dropped)
+                        /*
+                            Why Scale by 1 / (1 - dropOutRate)?
+                            --------------------------------------
+                            Dropout reduces the number of active neurons, so scaling prevents an overall reduction in signal strength during training. This ensures that the model learns properly without introducing bias due to missing activations
+                            - The neurons that remain active (i.e., not dropped) are scaled
+                            - This ensures that the total expected output remains unchanged
+                         */
+                        ret[i] = ret[i] * (1.0 / (1.0 - dropOutRate));
+                    } 
+
+                }
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::dropout() -> ") + cc_tokenizer::String<char>(e.what()));               
+            }
+
+            return ret;
+        }
             
         /*
             Output array, element-wise exponential of x. This is a scalar if @a is a scalar
