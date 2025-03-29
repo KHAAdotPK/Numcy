@@ -850,6 +850,94 @@ struct Collective
             }                    
         }
 
+        /**
+         * PRESERVED FAILED IMPLEMENTATIONS - ALLOCATOR INSTANTIATION ISSUES
+         *
+         * Both implementations below exhibit the same core problem:
+         * 
+         * FAILURE MODE:
+         * - Compiler fails to properly instantiate cc_tokenizer::allocator<F>
+         * - Occurs despite:
+         *   1. Verified template specializations exist for all supported types
+         *   2. static_assert confirms allocator<double> is valid
+         *   3. typeid shows correct type deduction (F == double)
+         *
+         * ROOT CAUSE ANALYSIS:
+         * 1. Template instantiation depth issue in:
+         *    - Nested template classes (Collective<Collective<E>>)
+         *    - Complex inheritance hierarchy
+         * 2. Visibility problem with allocator specializations:
+         *    - May require explicit instantiation in translation unit
+         *    - Potential ODR violations across compilation units
+         *
+         * IMPLEMENTATION #1 (Allocator-based):
+         * - Demonstrates the "correct" OOP approach that should work
+         * - Shows proper memory management pattern
+         * - Failed due to allocator instantiation problems
+         *
+         * IMPLEMENTATION #2 (Element-wise):
+         * - Attempted workaround avoiding allocator
+         * - Failed due to similar template issues in:
+         *   - Operator return type resolution
+         *   - Nested template type deduction         
+         **/       
+        /*template<typename F = double>
+        Collective<E> operator / (F x) throw (ala_exception)
+        {  
+            // First ensure the type is supported by your allocator
+            static_assert(
+                std::is_same<F, char>::value ||
+                std::is_same<F, float>::value ||
+                std::is_same<F, double>::value ||
+                std::is_same<F, unsigned char>::value ||
+                std::is_same<F, int>::value ||
+                std::is_same<F, wchar_t>::value ||
+                std::is_same<F, size_t>::value,
+                "Type not supported by cc_tokenizer::allocator"
+            );
+
+            F* ptr = NULL;
+            Collective<F> divisor;
+
+            cc_tokenizer::allocator<F> alloc_obj;
+
+            try
+            {
+                ptr = alloc_obj.allocate(1);
+                ptr[0] = x;
+
+                divisor = Collective<F>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+            }
+            catch (const std::bad_alloc& e)
+            {                
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator/() Error: ") + e.what());
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator/() Error: ") + e.what());
+            }
+            catch(ala_exception e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator/() -> ") + e.what());
+            }
+
+            return ((*this) / divisor);
+        }*/
+        /*template <typename F = double>
+        Collective<E> operator/ (F x) throw (ala_exception)
+        {
+            Collective<E> ret;
+
+           for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < this->getShape().getN(); i++)
+           {
+                (*this)[i] = (F)((*this)[i]) / x;
+           }
+
+           ret = (*this);
+
+            return ret;
+        }*/
+
     template <typename F = double>
     Collective<E> operator / (Collective<F>& divisor) throw (ala_exception)
     {
