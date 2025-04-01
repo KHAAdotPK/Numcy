@@ -1248,6 +1248,53 @@ static std::random_device rd;
             return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
         }
 
+        /**
+         * @brief Computes the element-wise power of a Collective<E> object.
+         * 
+         * This function raises each element in the given Collective<E> array `a` 
+         * to the power of `p` and returns a new Collective<E> with the results.
+         * 
+         * @tparam E The type of elements stored in the Collective.
+         * @param a A reference to a Collective<E> object whose elements will be raised to power `p`.
+         * @param p The exponent to which each element of `a` will be raised.
+         * @return Collective<E> A new Collective<E> containing the result of element-wise exponentiation.
+         * @throws ala_exception If the shape of `a` is malformed (i.e., its size is zero).
+         * @throws ala_exception If memory allocation fails due to `std::length_error` or `std::bad_alloc`.
+         * 
+         * @note The function dynamically allocates memory for the result. Ensure proper resource management 
+         *       to avoid memory leaks.
+         */
+        template <typename E = double>
+        static Collective<E> pow(Collective<E>& a, E p) throw (ala_exception)
+        {            
+            if (!a.getShape().getN())
+            {
+                throw ala_exception("Numcy::pow() Error: Malformed shape of the array received as one of the arguments.");
+            }
+
+            E* ptr = NULL;
+
+            try
+            {
+                ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getN());
+            }
+            catch (std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::pow() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+            catch (std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::pow() Error: ") + cc_tokenizer::String<char>(e.what()));
+            }
+
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
+            {
+                ptr[i] = std::pow(a[i], p);                
+            }
+
+            return Collective<E>{ptr, /*a.getShape().copy()*/ a.getShape()};
+        }
+
         template<typename E = double>
         static Collective<E> sqrt(Collective<E>& a) throw (ala_exception)
         {
