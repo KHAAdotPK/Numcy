@@ -407,6 +407,165 @@ class Numcy
         class Random
         {
             public:
+
+                /*
+                    The current weight initialization uses a random Gaussian distribution via Numcy::Random::randn<t>.
+                    While this is a valid approach, it’s often a good idea to use more sophisticated initialization techniques like Xavier (Glorot) or He initialization to ensure better convergence during training, especially for deep networks.
+
+                    Xavier initialization is particularly useful for layers with sigmoid or tanh activations, while He initialization is better suited for ReLU activations.
+                    The Xavier initialization sets the weights to be drawn from a distribution with a mean of 0 and a variance of 2 divided by the sum of the number of input and output units in the layer. This helps to keep the variance of the activations across layers roughly constant.
+
+                    The He initialization is similar but uses a variance of 2 divided by the number of input units in the layer. This is particularly useful for layers with ReLU activations, as it helps to mitigate the vanishing gradient problem.
+                    The He initialization sets the weights to be drawn from a distribution with a mean of 0 and a variance of 2 divided by the number of input units in the layer. This helps to keep the variance of the activations across layers roughly constant.
+                    
+                    Math Behind Xavier Initialization.
+                    Assumptions:
+                    - Let the number of inputs to a neuron be 𝑛.in (i.e., the number of neurons in the previous layer)
+                    - Let the number of outputs from a neuron be 𝑛.out (i.e., the number of neurons in the next layer or the number of neurons in the current layer)
+                    Variance of Inputs and Outputs:
+                    -- The key idea behind Xavier initialization is that the variance of the weights should be chosen so that the variance of activations and gradients across layers is controlled
+                    - The variance of the inputs to the neuron is 𝑣.in = 1/𝑛.in (assuming the inputs are drawn from a uniform distribution)
+                    Xavier Initialization Formula:
+                    -- The weights are initialized from a distribution with mean 0 and variance 2/(𝑛.in + 𝑛.out)
+                    - We initialize the weights with a uniform or normal distribution with the following variance: 𝑣.w = 2/(𝑛.in + 𝑛.out)
+                    -- This ensures that the variance of the outputs from the neuron is approximately equal to the variance of the inputs, which helps to maintain a stable distribution of activations across layers.
+                    - This means that the weights are sampled from a distribution with mean 0 and variance v.w
+
+                    Normal Distribution: If you're using a normal distribution, the weights are sampled from:
+                        W ~ N(0, sqrt(2/(𝑛.in + 𝑛.out)))
+                 */
+                /*
+                    Xavier (Glorot) Initialization using Normal Distribution
+
+                    This method is used to initialize weights in neural networks to ensure that the 
+                    variance of activations remains stable across layers, which improves convergence 
+                    and prevents vanishing/exploding gradients.
+
+                    Use Case:
+                    - Best suited for layers using sigmoid or tanh activations.
+
+                    Formula:
+                    - If a layer has 'n_in' input units and 'n_out' output units:
+                      Variance = 2 / (n_in + n_out)
+                      Mean = 0
+                      Standard Deviation (stddev) = sqrt(Variance)
+
+                    Implementation:
+                    - Draw weights from a normal distribution:
+                      W ~ N(0, sqrt(2 / (n_in + n_out)))
+
+                    
+                     ------------------------------------------------------------------------------------------- 
+                                              
+                     Suppose you are training a model using a paragraph consisting of 50 tokens (words),
+                     and you embed each token into a 60-dimensional vector of type double.
+                     That gives an input array of shape 50×60.
+
+                     Now consider two weight matrices:
+    
+                     1. W₁ is of shape 50×60:
+                     - Each input vector has 50 features.
+                     - You are projecting these into a 60-dimensional space.
+                     => input_size = 50
+                     => output_size = 60
+                     => num_weights = 50 × 60 = 3000
+
+                     2. W₂ is of shape 60×50:
+                     - Each input vector has 60 features (from the previous layer).
+                     - You are projecting these into a 50-dimensional space.
+                     => input_size = 60
+                     => output_size = 50
+                     => num_weights = 60 × 50 = 3000
+
+                    These values are important for Xavier initialization:
+                    - input_size: Number of input units to the current layer.
+                    - output_size: Number of output units from the current layer.
+                    - num_weights: Total number of weights in the matrix (input_size × output_size).
+                 */
+                /**
+                  * @brief Xavier (Glorot) weight initialization using a normal distribution.
+                  *
+                  * This function initializes weights for a neural network layer using the Xavier (Glorot)
+                  * initialization method, which is particularly suited for layers with sigmoid or tanh activations.
+                  * It draws values from a normal distribution with mean 0 and variance 2 / (input_size + output_size),
+                  * helping to maintain stable activation variance across layers during forward and backward propagation.
+                  *
+                  * @tparam E The type of the weights (e.g., float, double).
+                  * @param like A DIMENSIONS object that defines the shape of the weight array to generate.
+                  *             It must be a 2D shape representing the weight matrix of a layer.
+                  *             For example, if you have 50 input units and 60 output units, the shape would be (50, 60).
+                  *             Internally:
+                  *               - input_size is derived as the number of inner arrays (rows): 50
+                  *               - output_size is derived as the number of columns: 60
+                  * @param normal_or_uniformreal_distribution If true, initializes using a normal (Gaussian) distribution.
+                  *                                           If false, throws an exception (uniform distribution not implemented here).
+                  *
+                  * @return A Collective<E> object containing the initialized weight array.
+                  *
+                  * @throws ala_exception if the shape is invalid or memory allocation fails.
+                  *  
+                  * Example:
+                  *   - If W1 has shape (50, 60), input_size = 50, output_size = 60
+                  *   - If W2 has shape (60, 50), input_size = 60, output_size = 50
+                  *   In both cases, num_weights = input_size * output_size
+                  */                
+                template <typename E = double>                
+                static Collective<E> randn_xavier(DIMENSIONS like, bool normal_or_uniformreal_distribution = true) throw (ala_exception)
+                {
+                    cc_tokenizer::string_character_traits<char>::size_type num_weights = like.getN();
+
+                    if (!num_weights)
+                    {
+                        throw ala_exception("Numcy::Random::randn_xavier() Error: Shape of the array must not be zero.");
+                    }
+
+                    cc_tokenizer::string_character_traits<char>::size_type input_size = like.getDimensionsOfArray().getNumberOfInnerArrays(); // Number of input units to the current layer
+                    cc_tokenizer::string_character_traits<char>::size_type output_size = like.getNumberOfColumns(); // Number of output units from the current layer
+
+                    // Random number generator
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+
+                    // Xavier (Glorot) initialization parameters
+                    E mean = 0.0;
+                    E variance = 2.0 / (input_size + output_size);
+                    E stddev = std::sqrt(variance);  // Standard deviation for normal distribution
+
+                    E* ptr = nullptr;
+
+                    try 
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(num_weights);
+
+                        if (normal_or_uniformreal_distribution)
+                        {
+                            std::normal_distribution<E> dist(mean, stddev);
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
+                            {
+                                ptr[i] = dist(gen);
+                            }
+                        }
+                        else
+                        {
+                            throw ala_exception("Uniform distribution not implemented in this function.");
+                        }
+                    }
+                    catch (std::length_error& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    return Collective<E>{ptr, like.copy()};
+                }
+                
                 /*
                     TODO,
                     Make it variadic function
