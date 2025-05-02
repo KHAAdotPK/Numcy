@@ -537,7 +537,7 @@ class Numcy
                     {
                         ptr = cc_tokenizer::allocator<E>().allocate(num_weights);
 
-                        if (normal_or_uniformreal_distribution)
+                        if (normal_or_uniformreal_distribution) // Normal distribution
                         {
                             std::normal_distribution<E> dist(mean, stddev);
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
@@ -545,7 +545,7 @@ class Numcy
                                 ptr[i] = dist(gen);
                             }
                         }
-                        else
+                        else // Uniform distribution (not implemented in this function)
                         {
                             throw ala_exception("Uniform distribution not implemented in this function.");
                         }
@@ -831,7 +831,7 @@ static std::random_device rd;
         {               
             if ((stop - start)/step > like.getN())
             {   
-                unsigned int num = (stop - start)/step;
+                /*unsigned int*/ cc_tokenizer::string_character_traits<char>::size_type num = (stop - start)/step;
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::arange(): Range Size Error - The requested range size of ") + cc_tokenizer::String<char>(num) + cc_tokenizer::String<char>(" exceeds the requested size ") + cc_tokenizer::String<char>(like.getN()) + cc_tokenizer::String<char>(" of the to be allocated memory block's capacity to store the generated values."));
             }
 
@@ -2039,7 +2039,53 @@ static std::random_device rd;
             
             return ret;
         }
-        
+
+        /*
+            To do backpropagation through a ReLU activation, you need the derivative of ReLU, usually called ReLU_prime or ReLU'.
+
+            Computes the derivative of the ReLU function element-wise for the input `Collective`.
+            The derivative is defined as:
+                - 1 if x > 0
+                - 0 if x <= 0
+            
+            Parameters:
+                x: A `Collective<E>` object representing the input data.
+                    - Assumes `x` is well-formed and supports element-wise arithmetic operations.
+
+            Returns:
+                A new `Collective<E>` containing the derivative values of the corresponding elements in `x`.
+
+            Throws:
+                ala_exception: If memory allocation, length mismatch, or other computational errors occur.
+                    - The exception provides detailed context about the error source.
+         */
+        template<typename E = double>
+        static Collective<E> ReLU_prime(Collective<E>& x) throw (ala_exception)
+        {
+            if (!x.getShape().getN())
+            {                
+                throw ala_exception("Numcy::ReLU_prime() Error: The input tensor is empty or uninitialized.");
+            }
+
+            Collective<E> ret; 
+
+            try
+            {
+                ret = x;
+
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+                {
+                    ret[i] = (x[i] > 0) ? (E)1 : (E)0;
+                }
+            }
+            catch(ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::ReLU_prime() -> ") + cc_tokenizer::String<char>(e.what())); 
+            }
+
+            return ret;
+        }
+                
         /*
             Reshapes the first matrix to match the shape of the second matrix.
             The reshaping is performed based on the number of columns and the number of inner arrays.

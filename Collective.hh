@@ -133,11 +133,11 @@ struct Collective
                 }
                 catch (std::length_error& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
                 catch (std::bad_alloc& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
             }
             else
@@ -201,15 +201,15 @@ struct Collective
                 }
                 catch (std::length_error& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
                 catch (std::bad_alloc& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
                 }
                 catch (ala_exception& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() -> ") + cc_tokenizer::String<char>(e.what()));
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSTIONS_PTR) -> ") + cc_tokenizer::String<char>(e.what()));
                 }
 
                 shape = /**like*/ *(like->copy());
@@ -252,15 +252,15 @@ struct Collective
             }
             catch (std::length_error& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what())); 
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what())); 
             }
             catch (std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() Error: ") + cc_tokenizer::String<char>(e.what()));
+            {                
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what()));
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective() -> ") + cc_tokenizer::String<char>(e.what())); 
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) -> ") + cc_tokenizer::String<char>(e.what())); 
             }                        
         } 
 
