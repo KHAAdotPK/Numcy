@@ -1362,6 +1362,99 @@ static std::random_device rd;
             return func();
         }
 
+        /**
+         * @brief Wrapper function for matrix multiplication backward pass (backpropagation).
+         * 
+         ** This function serves as a wrapper that computes gradients for matrix multiplication
+         ** The function simply applies the chain rule:
+         **  - da = dc × b^T  (gradient w.r.t. first input)
+         **  - db = a^T × dc  (gradient w.r.t. second input)
+         *
+         * This function implements the backward pass for matrix multiplication, computing the gradients
+         * of the loss function with respect to the input matrices. It is used during backpropagation
+         * in neural networks and automatic differentiation systems.
+         *
+         * Given the gradient of the loss with respect to the output of matrix multiplication (dc),
+         * this function computes the gradients with respect to the two input matrices (da and db)
+         * using the chain rule of calculus.
+         *
+         * Mathematical formulation:
+         * - Forward pass: C = A × B
+         * - Backward pass: 
+         *   ∂L/∂A = ∂L/∂C × B^T
+         *   ∂L/∂B = A^T × ∂L/∂C
+         *
+         * Where:
+         * - L is the loss function
+         * - C is the output matrix from forward pass
+         * - A and B are the input matrices from forward pass
+         * - ^T denotes matrix transpose
+         *
+         * The function validates that the input matrices have compatible shapes and performs
+         * the gradient computation using existing matmul() and transpose() operations.
+         *
+         * @tparam E The data type of the matrix elements (default: double).
+         *
+         * @param a The first input matrix from the forward pass (left-hand side operand).
+         *          Must be the same matrix used in the corresponding forward matmul() call.
+         *          Used to compute gradient for the second input matrix.
+         *
+         * @param b The second input matrix from the forward pass (right-hand side operand).
+         *          Must be the same matrix used in the corresponding forward matmul() call.
+         *          Used to compute gradient for the first input matrix.
+         *
+         * @param da Output parameter - gradient of the loss with respect to matrix 'a'.
+         *           This will be computed as: da = dc × b^T
+         *           Must be a valid Collective<E> object that can be assigned to.
+         *
+         * @param db Output parameter - gradient of the loss with respect to matrix 'b'.
+         *           This will be computed as: db = a^T × dc
+         *           Must be a valid Collective<E> object that can be assigned to.
+         *
+         * @param dc Input parameter - gradient of the loss with respect to the output matrix.
+         *           This is typically the gradient flowing back from the next layer in the network.
+         *           Must have compatible dimensions for the gradient computations.
+         *
+         * @throws ala_exception If:
+         *         - The matrix dimensions are incompatible for the gradient computations.
+         *         - Memory allocation fails during intermediate calculations.
+         *         - An error occurs in the underlying matmul() or transpose() operations.
+         *         - Any exception propagated from the forward matmul() calls.
+         *
+         * @note This function modifies the da and db parameters in-place.
+         *
+         * @note The function relies on the existing matmul() and transpose() implementations
+         *       for the actual computation, maintaining consistency with the forward pass.
+         *
+         * @example
+         *     // Forward pass
+         *     Collective<double> a = ...; // 2x3 matrix
+         *     Collective<double> b = ...; // 3x4 matrix
+         *     Collective<double> c = matmul(a, b); // Result is 2x4 matrix
+         *     
+         *     // Backward pass
+         *     Collective<double> dc = ...; // Gradient w.r.t. c (2x4 matrix)
+         *     Collective<double> da, db;   // Gradients to be computed
+         *     matmul_backward(a, b, da, db, dc);
+         *     // da will be 2x3, db will be 3x4
+         *
+         * @see matmul() for the corresponding forward pass implementation
+         * @see transpose() for the matrix transpose operation used internally
+         */
+        template<typename E>
+        static void matmul_backward (Collective<E>& a, Collective<E>& b, Collective<E>& da, Collective<E>& db, Collective<E>& dc) throw (ala_exception)
+        {
+            try
+            {
+                da = matmul<E>(dc, b.transpose());
+                db = matmul<E>(a.transpose(), dc);
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul_backward() -> ") + cc_tokenizer::String<char>(e.what()));
+            }            
+        }
+
         /* 
             Returns a scalar, the maximum element in an array @a             
             @a, array of type E            
