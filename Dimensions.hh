@@ -41,41 +41,74 @@ typedef struct Dimensions
 
     }
 
-    Dimensions (DIMENSIONSOFARRAY dimensionsOfArray) : columns(0), rows(0), next(NULL), prev(NULL), reference_count(0)  
+    /**
+     * @brief Constructs a linked list of Dimensions objects from an array of sizes.
+     *
+     * This constructor initializes the current Dimensions object and, if the
+     * provided array contains more than one size, dynamically allocates and links
+     * additional Dimensions objects to represent a multi-dimensional structure.
+     *
+     * Behavior:
+     * - Initializes rows, columns, reference count, and linkage pointers (next/prev).
+     * - The first element of the array is assigned to `rows` of the current object.
+     * - For each subsequent element (except the last), a new Dimensions node is
+     *   allocated, linked as `next`, and assigned its `rows` value.
+     * - The final element of the array is assigned to `columns` of the last node.
+     *
+     * Memory Management:
+     * - Uses `cc_tokenizer::allocator<char>` for dynamic allocation of Dimensions
+     *   objects, cast to the appropriate type via `reinterpret_cast`.
+     * - Establishes a doubly-linked list structure (`next` and `prev`).
+     *
+     * @param dimensionsOfArray A container (DIMENSIONSOFARRAY) holding integer-like
+     *        values where:
+     *        - The first element defines the `rows` of the root object.
+     *        - Intermediate elements define the `rows` of linked nodes.
+     *        - The last element defines the `columns` of the final node.
+     */
+    Dimensions (DIMENSIONSOFARRAY& dimensionsOfArray) : columns(0), rows(0), next(NULL), prev(NULL), reference_count(0)  
     {        
-        if (dimensionsOfArray.size())
+        if (dimensionsOfArray.size() > 0)
         {
-            cc_tokenizer::string_character_traits<char>::size_type i = 1;
+            cc_tokenizer::string_character_traits<char>::size_type i = 0;            
             Dimensions* current = NULL;
 
-            while (i < (dimensionsOfArray.size() - 1))
+            while (i < (dimensionsOfArray.size() - 1)) 
             {
-                if (current == NULL)
+                if (i == 0)
                 {
-                    rows = dimensionsOfArray[0];
-                    next = reinterpret_cast<Dimensions*>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONS)));
-                    current = next;
-                    current->rows = dimensionsOfArray[i];
-                    current->columns = 0;
-                    current->next = NULL;
-                    current->prev = this;                    
+                    this->rows = dimensionsOfArray[0];
                 }
-                else 
+                else
                 {
-                    current->next = reinterpret_cast<Dimensions*>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONS)));
-                    current->next->next = NULL;
-                    current->next->prev = current;
-                    current = current->next;
+                    if (this->next == NULL)
+                    {
+                        this->next = reinterpret_cast<Dimensions*>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONS)));
 
-                    current->rows = dimensionsOfArray[i];
-                    current->columns = 0;
+                        current = this->next;
+
+                        current->next = NULL;
+                        current->prev = this;
+                        current->rows = dimensionsOfArray[1];
+                        current->columns = 0;                        
+                    }
+                    else 
+                    {
+                        current->next = reinterpret_cast<Dimensions*>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONS)));
+                        current->next->prev = current;
+                        current = current->next;
+
+                        current->next = NULL;
+                        current->rows = dimensionsOfArray[i];
+                        current->columns = 0;                        
+                    }
                 }
 
                 i = i + 1;
             }
 
-            current->columns = dimensionsOfArray[i];
-        }
+            current->columns = dimensionsOfArray[dimensionsOfArray.size() - 1];                        
+        }       
     }
 
     // Copy constructor, the caller should have called the incrementReferemceCount() already
@@ -93,6 +126,35 @@ typedef struct Dimensions
     {
     }
 
+    /**
+     * @brief Destructor for the Dimensions class.
+     *
+     * Cleans up dynamically allocated memory associated with the linked list
+     * of Dimensions objects that may have been created by the constructor.
+     *
+     * Behavior:
+     * - If `next` is non-null, the destructor traverses to the last linked
+     *   Dimensions node.
+     * - It then deallocates nodes in reverse order (from last to first),
+     *   using `cc_tokenizer::allocator<char>().deallocate()`.
+     * - Traversal stops once it reaches the root (the current object).
+     *
+     * Notes:
+     * - Ensures that all dynamically allocated linked nodes are released.
+     * - Uses `reinterpret_cast<char*>` when calling the allocator's `deallocate`
+     *   to match the allocation style used in the constructor.
+     *
+     * Potential Risks / Considerations:
+     * - Manual memory management: If allocation/deallocation logic changes,
+     *   mismatches can cause memory leaks or undefined behavior.
+     * - The root object (`this`) is not deallocated here—only its linked children.
+     * - Care must be taken to avoid double-deallocation if multiple destructors
+     *   or cleanup routines are called.
+     *
+     * Alternative Approach (commented out in code):
+     * - Iterative forward traversal with deallocation at each step (simpler but
+     *   less cache-friendly than the current reverse-deletion approach).
+     */
     ~Dimensions()
     {          
         Dimensions* current = next;

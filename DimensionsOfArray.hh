@@ -20,14 +20,37 @@ typedef struct DimensionsOfArray
         unsigned int reference_count;
 
     public: 
-        /* We need all different overloaded constructors, to support "initializer-lists" or else make all properties public */   
-        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn) : ptr(p), n(nn), reference_count(1)
+
+        /* We need all different overloaded constructors, to support "initializer-lists" or else make all properties public */
+        
+        /**
+         * @brief Constructs a DimensionsOfArray wrapper around a raw pointer and size.
+         *
+         * Initializes a DimensionsOfArray object that manages a pointer to an array of
+         * dimension values along with the number of elements it contains.
+         *
+         * Behavior:
+         * - Stores the provided raw pointer `p` as `ptr`.
+         * - Stores the number of elements `nn` as `n`.
+         * - Initializes `reference_count` to zero (useful for tracking shared usage).
+         *
+         * @param p  A pointer to the first element of the dimension array.
+         * @param nn The number of elements in the array (length of dimensions).
+         *
+         * Notes:
+         * - This constructor does not perform a deep copy of the data—it only stores
+         *   the pointer. The caller must ensure the lifetime of `p` exceeds the use
+         *   of this object unless explicit memory management is added.
+         * - `reference_count` is initialized but not incremented here; ownership and
+         *   usage tracking must be handled externally.
+         */
+        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn) : ptr(p), n(nn), reference_count(0)
         {
         }
 
         ~DimensionsOfArray(void)
         {
-            if (reference_count)
+            if (reference_count > 0)
             {
                 return;
             }
@@ -52,7 +75,10 @@ typedef struct DimensionsOfArray
 
         void decrementReferenceCount(void)
         {
-            reference_count--;
+            if (reference_count > 0)
+            {
+                reference_count--;
+            }
 
             if (reference_count == 0)
             {
@@ -165,11 +191,16 @@ typedef struct DimensionsOfArray
                 std::cout<< (*this)[i] << " "; 
             }
 
-            @return the he size, i.e., the number of physical dimensions of the array.
+            @return the size, i.e., the number of physical dimensions of the array.
          */
         cc_tokenizer::string_character_traits<char>::size_type size(void) 
         {
             return n;
+        }
+
+        cc_tokenizer::string_character_traits<char>::size_type get_n(void) 
+        {
+            return size();
         }
 
 } DIMENSIONSOFARRAY;
