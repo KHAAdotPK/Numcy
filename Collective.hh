@@ -17,55 +17,51 @@ struct Collective
 {
     private:
         E* ptr;
-        /*
-            Reference counting tracks the number of active references (pointers or other ways to access) to an object.
-            When an object is first created, there are no references to it, so the count should be 0.
-           
-            The responsibility of managing the reference count lies with the class itself...
-            the incrementRefernceCount() and decrementReferenceCount() methods and the implementation of 
-            destructor method         
-         */        
-        //unsigned int reference_count;
-        cc_tokenizer::string_character_traits<char>::size_type reference_count;
-            
-    public:        
+                           
         DIMENSIONS shape;
 
+        /*
+         * Reference counting tracks the number of active references (pointers or other ways to access) to an object.
+         * When an object is first created, there are no references to it, so the count should be 0.
+         *  
+         * The responsibility of managing the reference count lies with the class itself...
+         * the incrementRefernceCount() and decrementReferenceCount() methods and the implementation of 
+         * destructor method         
+         */       
+        cc_tokenizer::string_character_traits<char>::size_type reference_count;
+       
+    public:
         // Default constructor
-        Collective (void) : ptr(NULL), shape(Dimensions{0, 0, NULL, NULL}), reference_count(0)
-        {                        
+        Collective (void) : ptr(NULL), shape(Dimensions{0, 0, NULL, NULL, 1}), reference_count(0)
+        {               
         }
-        
+            
+        /*
+            This constructor properly:
+            1. v != NULL + valid dimensions → allocate and copy data
+            2. v == NULL + valid dimensions → shape-only initialization
+            3. Both invalid → default empty state
+            4. v != NULL + invalid dimensions → throw exception
+         */
         Collective (E* v, DIMENSIONS& like) throw (ala_exception)
-        {                           
+        {                        
             try
-            {
-                // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
-                if (ptr != NULL && getShape().getN())
-                {                
-                    cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                        
-                    shape = DIMENSIONS{0, 0, NULL, NULL};
-
-                    ptr = NULL;                 
-                }
-                
-                // If v is not NULL and like has a valid shape, it allocates memory and copies data from v.
+            {                               
                 if (v != NULL)
                 {                        
                     if (like.getN())
                     {
-                        ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
-
-                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
-                        {
-                            ptr[i] = v[i];
-                        }
-
-                        shape = /*like*/ *(like.copy());
+                        ptr = v;
+                                                
+                        shape = like;
+                        
+                        reference_count = 0;
+                    }
+                    else 
+                    {                        
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
-                } 
-                // If v is NULL but like has a valid shape, it initializes ptr to NULL but retains the shape.              
+                }             
                 /*
                     Special Case: When 'v' is NULL but 'like' has a valid shape.
                     This allows creating a Collective object with a defined shape but no allocated data.
@@ -79,26 +75,27 @@ struct Collective
     
                     Use Case: This is useful for creating placeholder objects or delaying memory allocation.
                  */                    
-                else if (like.getN()) 
+                else if (like.getN()) // v is NULL
                 {
                     ptr = NULL;                 
-                    shape = /*like*/ *(like.copy());
-                }                     
-            }
-            catch (std::length_error& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }
-            catch (std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    
+                    shape = like;
+
+                    reference_count = 0;
+                }
+                else
+                {
+                    ptr = NULL;
+                    
+                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
+
+                    reference_count = 0;
+                }                
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) -> ") + cc_tokenizer::String<char>(e.what()));
-            }
-            
-            reference_count = 0;            
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
+            }            
         }
 
         /**
@@ -107,7 +104,7 @@ struct Collective
          * This constructor initializes the object's member variables:
          *  - `ptr`: Pointer to data (of type E*)
          *  - `shape`: Shape information (of type DIMENSIONS)
-         *  - `reference_count`: Initial reference count (set to the provided `count`)
+         *  - `reference_count`: Initial reference count (set to the provided `rc`)
          *
          * **Important Note:** It's crucial to avoid explicitly calling `delete this;` within the constructor 
          * or the `decrementReferenceCount` function. This is because the object's memory will be 
@@ -116,37 +113,63 @@ struct Collective
          *
          * @param v Pointer to data (of type E*)
          * @param like Shape information (of type DIMENSIONS)
-         * @param count Initial reference count
+         * @param rc Initial reference count
          */
-        /*Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) : ptr(v), shape(like), reference_count(count)*/
-        Collective (E* v, DIMENSIONS like, cc_tokenizer::string_character_traits<char>::size_type count) 
-        {   
-            if (v != NULL)
-            {        
-                try 
-                {                    
-                    ptr = cc_tokenizer::allocator<E>().allocate(like.getN());
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+        Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc) throw (ala_exception) 
+        {               
+            try
+            {                               
+                if (v != NULL)
+                {                        
+                    if (like.getN())
                     {
-                        ptr[i] = v[i];                
+                        ptr = v;
+                                                
+                        shape = like;
+                        
+                        reference_count = 0;
                     }
-                }
-                catch (std::length_error& e)
+                    else 
+                    {                                                
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: Cannot initialize with data when dimensions specify zero elements"));
+                    }                                         
+                }             
+                /*
+                    Special Case: When 'v' is NULL but 'like' has a valid shape.
+                    This allows creating a Collective object with a defined shape but no allocated data.
+    
+                    Example 1: Direct Initialization
+                               Collective<double> W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                    Example 2: Assignment After Declaration
+                               Collective<E> W1;
+                               W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                    Use Case: This is useful for creating placeholder objects or delaying memory allocation.
+                 */                    
+                else if (like.getN()) // v is NULL
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
+                    ptr = NULL;                 
+                    
+                    shape = like;
+
+                    reference_count = 0;
                 }
-                catch (std::bad_alloc& e)
+                else
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
+                    ptr = NULL;
+                    
+                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
+
+                    reference_count = 0;
+                }                
             }
-            else
+            catch (ala_exception& e)
             {
-                ptr = NULL;
-            }
-            
-            shape = *(like.copy());
-            reference_count = count;
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) -> ") + cc_tokenizer::String<char>(e.what()));
+            }                  
         }
         
         /**
@@ -175,92 +198,102 @@ struct Collective
         * - The `shape` member is initialized by copying the dimensions from `like`.
         * - The reference count is set to 0.
         */
-        Collective (E *v, Dimensions* like)
-        {   
-            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
-            if (ptr != NULL && getShape().getN())
-            {                
-                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                    
-                shape = DIMENSIONS{0, 0, NULL, NULL};
-
-                ptr = NULL;
-                
-                reference_count = 0;
-            }
-            
-            if (v != NULL)
-            {
-                try 
-                {                    
-                    ptr = cc_tokenizer::allocator<E>().allocate(like->getN());
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like->getN(); i++)
+        Collective (E *v, DIMENSIONS_PTR like) throw (ala_exception)
+        {              
+            try
+            {                               
+                if (v != NULL)
+                {                        
+                    if (like->getN())
                     {
-                        ptr[i] = v[i];                
-                    }
-                }
-                catch (std::length_error& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
-                catch (std::bad_alloc& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
-                catch (ala_exception& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSTIONS_PTR) -> ") + cc_tokenizer::String<char>(e.what()));
-                }
-
-                shape = /**like*/ *(like->copy());
-                reference_count = 0;    
-            }
-            /*else
-            {
-                ptr = NULL;
-            }*/
-            
-            //shape = *(like->copy());
-            //shape = *like;
-            //reference_count = 0;           
-        }
-
-        Collective (Collective<E>& other) throw (ala_exception)
-        {   
-            reference_count = 0; 
-
-            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
-            if (ptr != NULL && getShape().getN())
-            {                
-                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                    
-                shape = DIMENSIONS{0, 0, NULL, NULL};
-
-                ptr = NULL;                 
-            }
+                        ptr = v;
+                                                
+                        shape = *like;
                         
-            try 
-            {
-                ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
-
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                        reference_count = 0;
+                    }
+                    else 
+                    {                                                
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: Cannot initialize with data when dimensions specify zero elements"));
+                    }                                         
+                }             
+                /*
+                    Special Case: When 'v' is NULL but 'like' has a valid shape.
+                    This allows creating a Collective object with a defined shape but no allocated data.
+    
+                    Example 1: Direct Initialization
+                               Collective<double> W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                    Example 2: Assignment After Declaration
+                               Collective<E> W1;
+                               W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                    Use Case: This is useful for creating placeholder objects or delaying memory allocation.
+                 */                    
+                else if (like->getN()) // v is NULL
                 {
-                    ptr[i] = other[i];
-                }
+                    ptr = NULL;                 
+                    
+                    shape = *like;
 
-                shape = other.getShape();
-            }
-            catch (std::length_error& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }
-            catch (std::bad_alloc& e)
-            {                
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    reference_count = 0;
+                }
+                else
+                {
+                    ptr = NULL;
+                    
+                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
+
+                    reference_count = 0;
+                }
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) -> ") + cc_tokenizer::String<char>(e.what())); 
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSTIONS_PTR) -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+        }
+
+        Collective (Collective<E>& other) throw (ala_exception)
+        {                           
+            if (other.ptr != NULL && other.getShape().getN() > 0)
+            {                                    
+                try 
+                {
+                    ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                    {
+                        ptr[i] = other[i];
+                    }
+
+                    shape = other.getShape().copy();
+
+                    this->reference_count = 0;
+                }
+                catch (std::length_error& e)
+                {
+                    // CRITICAL: Length constraint violation - system should terminate immediately
+                    // NO cleanup performed - this is a fatal error requiring process exit
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what())); 
+                }
+                catch (std::bad_alloc& e)
+                {   
+                    // CRITICAL: Memory allocation failure - system should terminate immediately
+                    // NO cleanup performed - this is a fatal error requiring process exit             
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what()));
+                }
+                catch (ala_exception& e)
+                {
+                    // Propagate existing ala_exception with additional context
+                    // NO cleanup performed assuming this is also a critical error
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) -> ") + cc_tokenizer::String<char>(e.what())); 
+                }
+            }
+            else
+            {
+                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(Collective<E>&) Error: Cannot initialize with data when either the source is NULL or dimensions specify zero elements"));               
             }                        
         } 
 
@@ -269,8 +302,8 @@ struct Collective
             return shape;
         }
 
-        cc_tokenizer::string_character_traits<char>::size_type showReferenceCounter(void)
-        {
+        cc_tokenizer::string_character_traits<char>::size_type get_referenceCount(void)
+        {            
             return reference_count;
         }
         
@@ -279,20 +312,16 @@ struct Collective
          */
         void incrementReferenceCount(void) 
         {
-            reference_count++;
+            this->getShape().incrementReferenceCount();
 
-            //shape.incrementReferenceCount();
+            this->reference_count++;
         }
-        /*
-            When a reference goes out of scope or is explicitly released, the reference count is decremented.
-         */
+        
         void decrementReferenceCount(void)
-        {
-            shape.decrementReferenceCount();
-
-            if (reference_count != 0)
+        {           
+            if (this->reference_count > 0)
             {
-                reference_count--;
+                this->reference_count--;
             }
             
             /*
@@ -313,7 +342,7 @@ struct Collective
                 - However, the object's destructor might also be called automatically when the object
                   (with no remaining references) goes out of scope. This can lead to the same memory location being deleted twice.
              */
-            else if (reference_count == 0)
+            else if (this->reference_count == 0)
             {
                 /*
                     Look for better version of this comment block below...
@@ -343,13 +372,23 @@ struct Collective
                  */
 
                 //delete this;
-            }
 
+                if (ptr != NULL)            
+                {                                            
+                    cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());                    
+                }
+
+                ptr = NULL;
+                reference_count = 0;
+                
             /*
                 When the reference count reaches zero in decrementReferenceCount, the object itself goes out of scope.
                 This triggers the automatic invocation of the destructor, which then takes care of deleting 
                 the memory and performing any necessary cleanup tasks.
-             */           
+             */
+            } 
+            
+            this->getShape().decrementReferenceCount();
         }
         
         /**
@@ -363,60 +402,16 @@ struct Collective
          * initializing the internal data structure to default values.
          */  
         ~Collective()
-        {               
-            if (reference_count)
-            {
-                return;
-            }
-            
-            /*
-                When the reference count reaches 0, it signifies there are no more active references, and the object's memory can be safely deallocated.
-             */
-
-            /*
-                To stop the effects of double deletion... becuse we are explicitly calling(like may be in the case of "placement new") the destructor method of this object
-             */
-            if (ptr != NULL)            
-            {                                            
-                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                
-                /* 
-                    TODO, causing problems, find where?
-                 */     
-                /* 
-                    Reset the state of the object to a valid but empty state 
-                  -------------------------------------------------------------  
-                 */
-                /* 
-                    Compile time error "No operator found which takes right hand operand of type initializer list"                             
-                    *this = {NULL, {0, 0, NULL, NULL}, 0};
-                 */
-                /*
-                    But the above mentioned compile time error is not thrown for this statenment
-                    *this = {NULL, {0, 0, NULL, NULL}};
-                 */
-                /*
-                    So instead of using the above mentioned ways I went for the following...
-                 */
-                ptr = NULL;
-
-                /* 
-                    Should be called explicitly. The destructor of the vector by the name of Dimensions will be called explicitly
-                    //shape.~Dimensions();
-                    //shape = DIMENSIONS {0, 0, NULL, NULL};
-                 */
-
-                // Just for documentation purposes
-                reference_count = 0;                
-            }            
+        {   
+            this->decrementReferenceCount();
         }
 
-        Collective<E>& operator= (E* p)
+        /*Collective<E>& operator= (E* p)
         {
             this->ptr = p;
 
             return *this;
-        }
+        }*/
 
         /**
          * @brief Copy Assignment Operator
@@ -428,98 +423,31 @@ struct Collective
          * @return A reference to the current instance after assignment.
          */
         Collective<E>& operator= (Collective<E>& other) throw (ala_exception)
-        {                           
-            // Check for self-assignment
+        {   
+            // Check for self-assignment                       
             if (this == &other)
             {
                 return *this;
             }
 
-            // It only gets executed when both are same and this only happens when both are NULL    
-            /*if ((ptr == other.ptr))
+            if (other.ptr == NULL || other.getShape().getN() == 0)
             {
-                std::cout<< "They both are same -> " << ptr << " ------> " << other.ptr <<std::endl;
-            }*/
+                return *this;
+            }
+
+            // Release this object's current references
+            // This will deallocate nodes if we were the last reference holder
+            this->decrementReferenceCount();
+
+            // Share ownership with the source object (shallow copy)
+            // Both objects now point to the same memory blocks
+            this->ptr = other.ptr;
+            this->shape = other.shape;            
+
+            // Increment reference count to reflect the new shared ownership
+            // All nodes in the linked list now have one more reference
+            this->incrementReferenceCount();
             
-            // If ptr is already allocated and the shape is valid, it deallocates the memory and resets the shape.
-            // These both are same, but the second one is more readable, becuause only checking ptr against NULL is dangerous because it may be pointing to some garbage value.
-            if (ptr != NULL && getShape().getN())
-            {
-                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                
-                ptr = NULL;
-                
-                shape = DIMENSIONS{0, 0, NULL, NULL};
-
-                reference_count = 0;
-            }           
-                       
-            // Decrement the reference count of the current instance            
-            /*
-                FOR DOCUMENTATION PURPOSES...
-                This assignment operator used to have back-to-back calls to decrementReferenceCount() and incrementReferenceCount().
-                Why were they there? They are still here, but now they are commented because I finally discovered the reason for my hour-long (maybe less) misery and pain.
-                It wasn't a mistake; no, it was a blunder. I know myself, and that's why I'm confident I'll make the same, or perhaps even a more spectacularly stupid, error again.
-
-                P.S.: I've left these comments here as a digital monument to my intellectual acrobatics. A reminder for my future self: "Don't pull a 'decrement-increment' stunt again!"
-             */
-            /* decrementReferenceCount(); */
-
-            // Update the pointer and shape from the other instance
-            /*ptr = other.ptr;
-            shape = other.shape;*/
-
-            //reference_count = 0;
-
-            if (other.ptr != NULL && other.getShape().getN())
-            {                
-                try 
-                {                                                
-                    ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
-
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN() /*- 1472 + 1*/; i++)
-                    {
-                        ptr[i] = other[i];
-                    }
-
-                    //shape = *(other.getShape().copy()); 
-                    
-                    shape = other.getShape();
-
-                    reference_count = 0;
-                }
-                catch (std::length_error& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
-                }
-                catch (std::bad_alloc& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::assignment operator() Error: ") + cc_tokenizer::String<char>(e.what()));                
-                }
-                catch (ala_exception& e)
-                {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::operator = () -> ") + cc_tokenizer::String<char>(e.what()));
-                }
-            }
-            else
-            {
-                ptr = NULL;
-                
-                //shape = DIMENSIONS{0, 0, NULL, NULL};  
-                shape = other.getShape();
-
-                reference_count = 0;
-            }
-                                   
-            //shape = other.shape;
-            //shape = *(other.getShape().copy());
-
-            // Increment the reference count of the new instance
-            /*
-                FOR DOCUMENTATION PURPOSES...
-             */
-            /* incrementReferenceCount(); */
-
             return *this;
         }
 
@@ -744,7 +672,7 @@ struct Collective
                             }
 
                             //other = Collective<E>{ptr, other.getShape().copy()};
-                            right_operand = Collective<E>{ptr, getShape().copy()};
+                            right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(*this, right_operand);
                         }
@@ -787,7 +715,7 @@ struct Collective
                             }
 
                             //*this = Collective<E>{ptr, other.getShape().copy()};
-                            left_operand = Collective<E>{ptr, other.getShape().copy()};
+                            left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(left_operand, other);
                         }
@@ -820,7 +748,7 @@ struct Collective
                             }
 
                             //other = Collective<E>{ptr, other.getShape().copy()};
-                            right_operand = Collective<E>{ptr, getShape().copy()};
+                            right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(*this, right_operand);
                         }
@@ -1008,7 +936,7 @@ struct Collective
             throw ala_exception("Collective::operator / () Error: Cannot divide matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, *((*this).getShape().copy())};
+        return Collective<E>{ptr, *((*this).getShape().copy())}; /* SIGMA CHANGE NEEDED HERE */
     }
 
     /**
@@ -1067,7 +995,7 @@ struct Collective
             ptr[i] = (*this)[i] - (E)subtrahend;
         }
 
-        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()};
+        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
     }
 
     /**
@@ -1352,7 +1280,7 @@ struct Collective
                         }
 
                         //*this = Collective<E>{ptr, other.getShape().copy()};
-                        left_operand = Collective<E>{ptr, other.getShape().copy()};
+                        left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(left_operand, other);
 
@@ -1389,7 +1317,7 @@ struct Collective
                         }
 
                         //other = Collective<E>{ptr, other.getShape().copy()};
-                        right_operand = Collective<E>{ptr, getShape().copy()};
+                        right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(*this, right_operand);
 
@@ -1434,8 +1362,8 @@ struct Collective
                          }
 
                          /*this = Collective<E>{ptr, other.getShape().copy()};*/
-                         left_operand = Collective<E>{ptr, other.getShape().copy()};
-
+                         left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+ 
                          //return Numcy::dot(left_operand, other);
 
                          return left_operand;
@@ -1469,7 +1397,7 @@ struct Collective
                          }
 
                          //other = Collective<E>{ptr, other.getShape().copy()};
-                         right_operand = Collective<E>{ptr, getShape().copy()};
+                         right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
 
                          //return Numcy::dot(*this, right_operand);
 
@@ -1504,7 +1432,7 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[0];
                 }
-                ret = Collective<E>{local_ptr, getShape().copy()};
+                ret = Collective<E>{local_ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
             }
             catch (const std::bad_alloc& e)
             {
@@ -1529,7 +1457,7 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[i];
                 }
-                ret = Collective<E>{local_ptr, other.getShape().copy()};
+                ret = Collective<E>{local_ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
             }
             catch (const std::bad_alloc& e)
             {
