@@ -574,7 +574,7 @@ class Numcy
                  */
 		        template <typename E = double>
                 static Collective<E> randn(DIMENSIONS& like, E seed = 0, AXIS axis = AXIS_NONE) throw (ala_exception)
-                {                    
+                {   
                     cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     
                     if (!like.getN())
@@ -635,8 +635,8 @@ static std::random_device rd;
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
                             {
-                                ptr[i] = nd(gen);                                                    
-                            }
+                                ptr[i] = nd(gen);                                                                                  
+                            }                            
                         }
                         break;
                         case AXIS_COLUMN:
@@ -651,7 +651,7 @@ static std::random_device rd;
                         }
                         break;                        
                     }
-
+                    
                     return Collective<E>{ptr, /*like.copy()*/ like};
                 }	
 		                

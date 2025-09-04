@@ -125,6 +125,18 @@ cc_tokenizer::string_character_traits<char>::size_type* getReferenceCounts(void)
 ```
 Returns an array containing the reference count of each node in the linked list. Allocates memory for the output array - **caller must deallocate**. Useful for debugging shared ownership scenarios.
 
+#### getNext()
+```cpp
+DIMENSIONSPROPERTIES_PTR getNext()
+```
+Returns a pointer to the next node in the linked list structure. Provides safe access to the next pointer with null checking - returns NULL if the current properties pointer is NULL or if there is no next node. This method enables traversal and inspection of the linked list structure without exposing the internal properties directly.
+
+#### getPrev()
+```cpp
+DIMENSIONSPROPERTIES_PTR getPrev()
+```
+Returns a pointer to the previous node in the linked list structure. Provides safe access to the previous pointer with null checking - returns NULL if the current properties pointer is NULL or if there is no previous node. This method enables backward traversal and inspection of the linked list structure without exposing the internal properties directly.
+
 ### Operators
 
 #### Assignment Operator

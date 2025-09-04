@@ -8,11 +8,40 @@
 #ifndef KHAA_PK_COLLECTIVE_HEADER_HH
 #define KHAA_PK_COLLECTIVE_HEADER_HH
 
+template <typename E>
+struct Collective; 
+
+template <typename E = double>
+struct CollectiveProperties 
+{
+    CollectiveProperties() 
+    {        
+        this->ptr = NULL;
+        this->shape = new DIMENSIONS{0, 0, NULL, NULL};
+        this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+    }
+
+    CollectiveProperties (E* v, DIMENSIONS& like)     
+    {
+        this->ptr = v;
+        like.incrementReferenceCount();        
+        this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()}; 
+        this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+    }
+
+    private:
+        E* ptr;
+        DIMENSIONS_PTR shape;
+        cc_tokenizer::string_character_traits<char>::size_type reference_count; 
+        
+    friend struct Collective<E>;
+};
+
 /*  
     The following composite is named "Collective", the instance of this composite
     is a collection of array of type "E" and its shape. 
  */
-template<typename E = double>
+template <typename E = double>
 struct Collective 
 {
     private:
@@ -29,11 +58,46 @@ struct Collective
          * destructor method         
          */       
         cc_tokenizer::string_character_traits<char>::size_type reference_count;
+
+        CollectiveProperties<E>* properties;
        
     public:
         // Default constructor
-        Collective (void) : ptr(NULL), shape(Dimensions{0, 0, NULL, NULL, 1}), reference_count(0)
-        {               
+        Collective (void)
+        {             
+            try
+            {
+                /*this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>))); 
+
+                this->properties->ptr = NULL;
+                std::cout<< "Open" << std::endl;
+                this->properties->shape = DIMENSIONS{0, 0, NULL, NULL};
+                std::cout<< "Closed..." << std::endl;                
+                this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+
+                this->properties = new CollectiveProperties<E>();
+                /*//this->properties->ptr = NULL;
+                //this->properties->shape = DIMENSIONS{0, 0, NULL, NULL};
+                //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+            }
+            catch (std::bad_alloc& e)
+            {
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::length_error& e)
+            {
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) Error: ") + cc_tokenizer::String<char>(e.what()));
+            }             
         }
             
         /*
@@ -44,21 +108,20 @@ struct Collective
             4. v != NULL + invalid dimensions → throw exception
          */
         Collective (E* v, DIMENSIONS& like) throw (ala_exception)
-        {                        
+        {                                
             try
-            {                               
+            {   
+                //this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>))); 
+
                 if (v != NULL)
-                {                        
+                {                       
                     if (like.getN())
-                    {
-                        ptr = v;
-                                                
-                        shape = like;
-                        
-                        reference_count = 0;
+                    {                                                                        
+                        this->properties = new CollectiveProperties<E> (v, like);
                     }
                     else 
-                    {                        
+                    {   
+                        // NO cleanup performed - this is a fatal error requiring process exit                     
                         throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
                 }             
@@ -76,24 +139,34 @@ struct Collective
                     Use Case: This is useful for creating placeholder objects or delaying memory allocation.
                  */                    
                 else if (like.getN()) // v is NULL
-                {
-                    ptr = NULL;                 
-                    
-                    shape = like;
-
-                    reference_count = 0;
+                {                    
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = like;
+                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                 }
                 else
                 {
-                    ptr = NULL;
-                    
-                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
-
-                    reference_count = 0;
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                 }                
             }
+            catch (std::bad_alloc& e)
+            {
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::length_error& e)
+            {
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            } 
             catch (ala_exception& e)
             {
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
             }            
         }
@@ -118,20 +191,21 @@ struct Collective
         Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc) throw (ala_exception) 
         {               
             try
-            {                               
+            { 
+                //this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>)));
+
                 if (v != NULL)
                 {                        
                     if (like.getN())
                     {
-                        ptr = v;
-                                                
-                        shape = like;
-                        
-                        reference_count = 0;
+                        /*this->properties->ptr = v;
+                        this->properties->shape = like;
+                        this->properties->reference_count = rc;*/    
                     }
                     else 
-                    {                                                
-                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: Cannot initialize with data when dimensions specify zero elements"));
+                    { 
+                        // NO cleanup performed assuming this is also a critical error                                               
+                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
                 }             
                 /*
@@ -149,21 +223,29 @@ struct Collective
                  */                    
                 else if (like.getN()) // v is NULL
                 {
-                    ptr = NULL;                 
-                    
-                    shape = like;
-
-                    reference_count = 0;
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = like;
+                    this->properties->reference_count = rc;*/
                 }
                 else
                 {
-                    ptr = NULL;
-                    
-                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
-
-                    reference_count = 0;
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    this->properties->reference_count = rc;*/
                 }                
             }
+            catch (std::bad_alloc& e)
+            {
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::length_error& e)
+            {
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            } 
             catch (ala_exception& e)
             {
                 // Propagate existing ala_exception with additional context
@@ -201,19 +283,20 @@ struct Collective
         Collective (E *v, DIMENSIONS_PTR like) throw (ala_exception)
         {              
             try
-            {                               
+            { 
+                this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>)));
+
                 if (v != NULL)
                 {                        
                     if (like->getN())
                     {
-                        ptr = v;
-                                                
-                        shape = *like;
-                        
-                        reference_count = 0;
+                        /*this->properties->ptr = v;
+                        this->properties->shape = *like;
+                        this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                     }
                     else 
-                    {                                                
+                    {   
+                        // NO cleanup performed assuming this is also a critical error                                               
                         throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
                 }             
@@ -232,21 +315,29 @@ struct Collective
                  */                    
                 else if (like->getN()) // v is NULL
                 {
-                    ptr = NULL;                 
-                    
-                    shape = *like;
-
-                    reference_count = 0;
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = *like;
+                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                 }
                 else
                 {
-                    ptr = NULL;
-                    
-                    shape = DIMENSIONS {0, 0, NULL, NULL, 0};
-
-                    reference_count = 0;
+                    /*this->properties->ptr = NULL;
+                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                 }
             }
+            catch (std::bad_alloc& e)
+            {
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            catch (std::length_error& e)
+            {
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: ") + cc_tokenizer::String<char>(e.what())); 
+            } 
             catch (ala_exception& e)
             {
                 // Propagate existing ala_exception with additional context
@@ -255,22 +346,22 @@ struct Collective
             }
         }
 
-        Collective (Collective<E>& other) throw (ala_exception)
-        {                           
-            if (other.ptr != NULL && other.getShape().getN() > 0)
-            {                                    
+        Collective (const Collective<E>& other) throw (ala_exception)
+        {   
+            if (other.properties != NULL) 
+            {
                 try 
                 {
-                    ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                    //ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
 
                     for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
                     {
-                        ptr[i] = other[i];
+                        (*this)[i] = other[i];
                     }
 
-                    shape = other.getShape().copy();
+                    /*shape = other.getShape().copy();
 
-                    this->reference_count = 0;
+                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
                 }
                 catch (std::length_error& e)
                 {
@@ -289,106 +380,73 @@ struct Collective
                     // Propagate existing ala_exception with additional context
                     // NO cleanup performed assuming this is also a critical error
                     throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) -> ") + cc_tokenizer::String<char>(e.what())); 
-                }
+                }   
             }
             else
             {
-                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(Collective<E>&) Error: Cannot initialize with data when either the source is NULL or dimensions specify zero elements"));               
-            }                        
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(Collective<E>&) Error: Cannot initialize with data when either the source is NULL or dimensions specify zero elements"));               
+            }                                        
         } 
 
-        DIMENSIONS& getShape(void)
+        DIMENSIONS getShape(void) const throw (ala_exception)
         {
-            return shape;
+            if (this->properties != NULL && this->properties->shape != NULL)
+            {
+                return *(this->properties->shape);
+            }
+            
+            return DIMENSIONS{0, 0, NULL, NULL};
         }
 
-        cc_tokenizer::string_character_traits<char>::size_type get_referenceCount(void)
+        cc_tokenizer::string_character_traits<char>::size_type getReferenceCount(void) const
         {            
-            return reference_count;
+            if (this->properties != NULL)
+            {
+                return this->properties->reference_count;
+            }
+
+            return 0;
         }
         
         /*
             As the object is assigned to variables or passed around, the reference count is incremented (meaning there's one more way to access it).
          */
         void incrementReferenceCount(void) 
-        {
-            this->getShape().incrementReferenceCount();
-
-            this->reference_count++;
+        {            
+            if (this->properties != NULL)
+            {
+                if (this->properties->shape != NULL)
+                {
+                    this->properties->shape->incrementReferenceCount();
+                }
+                this->properties->reference_count++;
+            }
         }
         
         void decrementReferenceCount(void)
-        {           
-            if (this->reference_count > 0)
+        { 
+            if (this->properties != NULL)
             {
-                this->reference_count--;
-            }
-            
-            /*
-                Double Deletion: Make sure that you only call decrementReferenceCount() method
-                when you atleast have one more reference/pointer to this object. Otherwise double deletion
-                may occur,  You explicitly call the destructor which frees the resources and then the same 
-                destructor gets called automatically when the object which had no references/pointers to begin wuth goes 
-                out of scope.
-             */
-            /*
-                Double Deletion Warning...
-                Be cautious when calling decrementReferenceCount() within this function.
-                Ensure there's at least one more reference (pointer) to the object before decrementing the
-                count. Otherwise, double deletion might occur.
+                this->properties->shape->decrementReferenceCount();
 
-                This happens because...
-                - You explicitly call the destructor (delete this;), which frees the object's resources.
-                - However, the object's destructor might also be called automatically when the object
-                  (with no remaining references) goes out of scope. This can lead to the same memory location being deleted twice.
-             */
-            else if (this->reference_count == 0)
-            {
-                /*
-                    Look for better version of this comment block below...
-                    ---------------------------------------------------------
-                    Gemini please make the following comment better... 
-                    Some how I think this is not the way to call the constructor explicitly, 
-                    I am compiling this program with cl(Visual Studio Tools) and when the following
-                    statement gets executed whole program just crashes.
-
-                    Naively I provided a constructor for this class which takes the reference_count as an one of its arguments.
-                    The idea is that at the time of instanciation you set the reference count to 1, and then during the ife time of the instanciated object 
-                    you call this method(the decrement reference count) in the hope that object resources get collected in safe manner,
-                    but even then program crashes when I call this decrementReferenceCount() method.
-                 */
-                /*
-                    Better version of above comments...
-                    --------------------------------------
-                    There seems to be an issue with explicitly calling the destructor within the 
-                    `decrementReferenceCount` function. While compiling with cl (Visual Studio Tools),
-                    the program crashes when the commented-out line `delete this;` is executed.
-
-                    My initial approach was to provide a constructor that takes the `reference_count`
-                    as an argument. This was intended to set the initial reference count to 1
-                    during object creation. Subsequently, I planned to call `decrementReferenceCount`
-                    throughout the object's lifetime to manage memory in a controlled manner.
-                    However, the program crashes even with this approach.
-                 */
-
-                //delete this;
-
-                if (ptr != NULL)            
-                {                                            
-                    cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());                    
+                if (this->properties->reference_count > 0)
+                {
+                    this->properties->reference_count--;
                 }
+            }
 
-                ptr = NULL;
-                reference_count = 0;
+            if (this->properties != NULL && this->properties->reference_count == 0)
+            {
+                if (this->properties->ptr != NULL)
+                {
+                    cc_tokenizer::allocator<E>().deallocate(this->properties->ptr, this->properties->shape->getN());
+
+                    this->properties->ptr = NULL;                    
+                }
                 
-            /*
-                When the reference count reaches zero in decrementReferenceCount, the object itself goes out of scope.
-                This triggers the automatic invocation of the destructor, which then takes care of deleting 
-                the memory and performing any necessary cleanup tasks.
-             */
-            } 
-            
-            this->getShape().decrementReferenceCount();
+                cc_tokenizer::allocator<char>().deallocate(reinterpret_cast<char*>(this->properties), sizeof(CollectiveProperties<E>));
+            }            
         }
         
         /**
@@ -422,35 +480,28 @@ struct Collective
          * @param other The Collective instance to be assigned from.
          * @return A reference to the current instance after assignment.
          */
-        Collective<E>& operator= (Collective<E>& other) throw (ala_exception)
-        {   
+        Collective<E>& operator= (const Collective<E>& other) throw (ala_exception)
+        {               
             // Check for self-assignment                       
             if (this == &other)
             {
                 return *this;
             }
 
-            if (other.ptr == NULL || other.getShape().getN() == 0)
+            if (other.properties != NULL)
             {
-                return *this;
+
+                this->decrementReferenceCount();
+
+                this->properties = other.properties;
+                
+                this->incrementReferenceCount();
+
             }
-
-            // Release this object's current references
-            // This will deallocate nodes if we were the last reference holder
-            this->decrementReferenceCount();
-
-            // Share ownership with the source object (shallow copy)
-            // Both objects now point to the same memory blocks
-            this->ptr = other.ptr;
-            this->shape = other.shape;            
-
-            // Increment reference count to reflect the new shared ownership
-            // All nodes in the linked list now have one more reference
-            this->incrementReferenceCount();
             
             return *this;
         }
-
+        
         Collective& operator-= (Collective& other) throw (ala_exception)
         {
             if (!(getShape() == other.getShape()))
@@ -479,18 +530,23 @@ struct Collective
           * @throws ala_exception if the index is out of range.
          */         
         E& operator[] (cc_tokenizer::string_character_traits<char>::size_type index) throw (ala_exception)
-        {
-            if (ptr == NULL)
+        {            
+            if (this->properties == NULL)
             {
-                throw ala_exception("Collective::operator[] Error: Attempting to access an element in an empty array.");
+                throw ala_exception("Collective::operator[] Error: Attempting to access properties which are not set yet");
             }
 
-            if (index >= getShape().getN())
+            if (this->properties->ptr == NULL)
+            {
+                throw ala_exception("Collective::operator[] Error: Attempting to access an element in an empty array");
+            }
+
+            if (index >= this->getShape().getN())
             {
                 throw ala_exception("Collective::operator[] Error: Index out of range.");
             }
             
-            return ptr[index];
+            return this->properties->ptr[index];
         }
 
         /*

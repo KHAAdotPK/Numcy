@@ -85,7 +85,7 @@ typedef struct Dimensions
                 
                 this->properties->columns = 0;
                 this->properties->rows = 0;            
-                this->properties->reference_count = 0;
+                this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
 
                 this->properties->next = NULL;
                 this->properties->prev = NULL;
@@ -172,12 +172,12 @@ typedef struct Dimensions
          * next_node->prev = middle_dim.properties;
          * @endcode
          */
-        Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, DIMENSIONSPROPERTIES_PTR n, DIMENSIONSPROPERTIES_PTR p, cc_tokenizer::string_character_traits<char>::size_type rc = 1)
+        Dimensions(cc_tokenizer::string_character_traits<char>::size_type c, cc_tokenizer::string_character_traits<char>::size_type r, DIMENSIONSPROPERTIES_PTR n, DIMENSIONSPROPERTIES_PTR p, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT)
         {
             try
             {
                 this->properties = reinterpret_cast<DIMENSIONSPROPERTIES_PTR>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONSPROPERTIES))); 
-                
+                                
                 this->properties->columns = c;
                 this->properties->rows = r;            
                 this->properties->reference_count = rc;
@@ -196,7 +196,7 @@ typedef struct Dimensions
                 // CRITICAL: Length constraint violation - system should terminate immediately
                 // NO cleanup performed - this is a fatal error requiring process exit
                 throw ala_exception(cc_tokenizer::String<char>("DIMENSIONS::DIMENSIONS(cc_tokenizer::string_character_traits<char>::size_type, cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONSPROPERTIES_PTR, DIMENSIONSPROPERTIES_PTR, cc_tokenizer::string_character_traits<char>::size_type) Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }        
+            }                        
         }
    
         /**
@@ -259,7 +259,7 @@ typedef struct Dimensions
                             this->properties->prev = NULL;
 
                             // Initialize reference count
-                            this->properties->reference_count = 0;
+                            this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
 
                             // Set current pointer to root for subsequent operations
                             current = this->properties; // To deal with the edge case of a single link that is when we are dealing with just a 2D array
@@ -279,7 +279,7 @@ typedef struct Dimensions
                                 current->prev = this->properties; // Link back to root
                                 current->rows = dimensionsOfArray[1]; // Set dimension value and that "1" makes it a second node
                                 current->columns = 0; // Will be set later and that is if the node is the last node
-                                current->reference_count = 0;                       
+                                current->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;                       
                             }
                             else // Creating subsequent nodes (third, fourth, etc.) 
                             {
@@ -294,7 +294,7 @@ typedef struct Dimensions
                                 current->next = NULL;
                                 current->rows = dimensionsOfArray[i]; // Set dimension value
                                 current->columns = 0; // Will be set later for the last node
-                                current->reference_count = 0;                        
+                                current->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;                        
                             }
                         }
 
@@ -537,7 +537,7 @@ typedef struct Dimensions
 
             // Move to next node in the linked list
             current = current->next;            
-        }
+        }        
     }
 
     /**
@@ -592,7 +592,7 @@ typedef struct Dimensions
 
             // If reference count reaches zero, deallocate the node
             if (current->reference_count == 0)
-            {
+            {                
                 if (current->prev != NULL) // Removing a middle or tail node
                 {   
                     // Update previous node's next pointer to skip current node                 
@@ -646,7 +646,7 @@ typedef struct Dimensions
             {
                 // Move to next node without modification
                 current = current->next;
-            }
+            }           
         }
     }
 
@@ -714,7 +714,7 @@ typedef struct Dimensions
                     ret->rows = dimensionsOfArray[i]; // Set current dimension values
                     ret->next = NULL; // No next node yet
                     ret->prev = NULL; // Root has no previous node
-                    ret->reference_count = 0; // Initialize reference count
+                    ret->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT; // Initialize reference count
                 
                     // Set current pointer for subsequent operations
                     current = ret;                                    
@@ -729,7 +729,7 @@ typedef struct Dimensions
                     current->next->rows = dimensionsOfArray[i]; // Set current dimension value
                     current->next->next = NULL; // No further nodes yet
                     current->next->prev = current; // Link back to previous node
-                    current->next->reference_count = 0; // Initialize reference count
+                    current->next->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT; // Initialize reference count
                 
                     // Move current pointer to the newly created node
                     current = current->next;                    
@@ -1218,6 +1218,26 @@ typedef struct Dimensions
          return n;  // Return total number of links
      }
 
+     DIMENSIONSPROPERTIES_PTR getNext() 
+     {
+        if (this->properties != NULL)
+        {
+            return this->properties->next;
+        }
+
+        return NULL;
+     }
+
+     DIMENSIONSPROPERTIES_PTR getPrev() 
+     {
+        if (this->properties != NULL)
+        {
+            return this->properties->prev;
+        }
+
+        return NULL;
+     }
+
     /**
      * @brief Assignment operator with INTENTIONAL shared ownership semantics.
      *
@@ -1263,16 +1283,25 @@ typedef struct Dimensions
      * @see Copy constructor for deep copy semantics
      */
      Dimensions& operator= (const Dimensions& other)
-     {
+     {        
          // Check for self-assignment
          if (this == &other)
-         {            
+         {                        
              return *this;    
          }
+
+         if (this->properties == NULL || other.properties == NULL || this->properties == other.properties)
+         {           
+            return *this;
+         }
     
+         std::cout<< "OK HERE 1" << std::endl;
+
          // Release this object's current references
          // This will deallocate nodes if we were the last reference holder
          this->decrementReferenceCount();
+
+         std::cout<< "OK HERE 2" << std::endl;
 
          // Share ownership with the source object (shallow copy)
          // Both objects now point to the same linked list structure
@@ -1284,7 +1313,7 @@ typedef struct Dimensions
                               
          return *this;        
      }
-
+     
      Dimensions& operator= (DIMENSIONSPROPERTIES_PTR other)
      {
         // Check for self-assignment
