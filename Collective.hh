@@ -14,19 +14,35 @@ struct Collective;
 template <typename E = double>
 struct CollectiveProperties 
 {
-    CollectiveProperties() 
-    {        
-        this->ptr = NULL;
-        this->shape = new DIMENSIONS{0, 0, NULL, NULL};
-        this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+    CollectiveProperties() throw (ala_exception)
+    {   
+        try
+        {                     
+            this->ptr = NULL;
+            this->shape = new DIMENSIONS{0, 0, NULL, NULL};
+            this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+        }
+        catch (ala_exception& e)
+        {
+            // Propagate existing ala_exception with additional context
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties::CollectiveProperties() -> ") + e.what());
+        }
     }
 
     CollectiveProperties (E* v, DIMENSIONS& like)     
     {
-        this->ptr = v;
-        like.incrementReferenceCount();        
-        this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()}; 
-        this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+        try
+        {        
+            this->ptr = v;
+            like.incrementReferenceCount();        
+            this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()}; 
+            this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+        }
+        catch (ala_exception& e)
+        {
+            // Propagate existing ala_exception with additional context
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties::CollectiveProperties(E*, DIMENSIONS&) -> ") + e.what());
+        }
     }
 
     private:
@@ -67,20 +83,9 @@ struct Collective
         {             
             try
             {
-                /*this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>))); 
-
-                this->properties->ptr = NULL;
-                std::cout<< "Open" << std::endl;
-                this->properties->shape = DIMENSIONS{0, 0, NULL, NULL};
-                std::cout<< "Closed..." << std::endl;                
-                this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
-
                 this->properties = new CollectiveProperties<E>();
-                /*//this->properties->ptr = NULL;
-                //this->properties->shape = DIMENSIONS{0, 0, NULL, NULL};
-                //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
             }
-            catch (std::bad_alloc& e)
+            /*catch (std::bad_alloc& e)
             {
                 // CRITICAL: Memory allocation failure - system should terminate immediately
                 // NO cleanup performed - this is a fatal error requiring process exit
@@ -91,28 +96,55 @@ struct Collective
                 // CRITICAL: Length constraint violation - system should terminate immediately
                 // NO cleanup performed - this is a fatal error requiring process exit
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) Error: ") + cc_tokenizer::String<char>(e.what())); 
-            }
+            }*/
             catch (ala_exception& e)
             {
                 // Propagate existing ala_exception with additional context
-                // NO cleanup performed assuming this is also a critical error
-                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) Error: ") + cc_tokenizer::String<char>(e.what()));
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective<E>(void) -> ") + e.what());
             }             
         }
             
-        /*
+        /*                            
+            Special Case: When 'v' is NULL but 'like' has a valid shape.
+            This allows creating a Collective object with a defined shape but no allocated data.
+    
+                Example 1: Direct Initialization
+                           Collective<double> W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                Example 2: Assignment After Declaration
+                           Collective<E> W1;
+                           W1 = Collective<double>{NULL, DIMENSIONS{n, m, NULL, NULL}};
+    
+                Use Case: This is useful for creating placeholder objects or delaying memory allocation.
+                 
             This constructor properly:
             1. v != NULL + valid dimensions → allocate and copy data
             2. v == NULL + valid dimensions → shape-only initialization
             3. Both invalid → default empty state
             4. v != NULL + invalid dimensions → throw exception
+
          */
         Collective (E* v, DIMENSIONS& like) throw (ala_exception)
-        {                                
-            try
-            {   
-                //this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>))); 
-
+        {   
+            try 
+            {
+                if (like.getN() > 0)
+                {
+                    this->properties = new CollectiveProperties<E> (v, like);
+                }
+                else 
+                {
+                    this->properties = new CollectiveProperties<E> ();
+                }
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + e.what()); 
+            }
+            
+            /*try
+            {                   
                 if (v != NULL)
                 {                       
                     if (like.getN())
@@ -121,10 +153,10 @@ struct Collective
                     }
                     else 
                     {   
-                        // NO cleanup performed - this is a fatal error requiring process exit                     
-                        throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS) Error: Cannot initialize with data when dimensions specify zero elements"));
+                        // Propagate existing ala_exception with additional context
+                        //throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + e.what());
                     }                                         
-                }             
+                }*/             
                 /*
                     Special Case: When 'v' is NULL but 'like' has a valid shape.
                     This allows creating a Collective object with a defined shape but no allocated data.
@@ -138,19 +170,19 @@ struct Collective
     
                     Use Case: This is useful for creating placeholder objects or delaying memory allocation.
                  */                    
-                else if (like.getN()) // v is NULL
+                /*else if (like.getN()) // v is NULL
                 {                    
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = like;
-                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = like;
+                    //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
                 }
                 else
                 {
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
-                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
-                }                
-            }
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+                }*/                
+            /*}
             catch (std::bad_alloc& e)
             {
                 // CRITICAL: Memory allocation failure - system should terminate immediately
@@ -168,7 +200,7 @@ struct Collective
                 // Propagate existing ala_exception with additional context
                 // NO cleanup performed assuming this is also a critical error
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
-            }            
+            }*/            
         }
 
         /**
