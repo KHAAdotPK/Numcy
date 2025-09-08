@@ -13,7 +13,7 @@ struct Collective;
 
 template <typename E = double>
 struct CollectiveProperties 
-{
+{    
     CollectiveProperties() throw (ala_exception)
     {   
         try
@@ -25,23 +25,68 @@ struct CollectiveProperties
         catch (ala_exception& e)
         {
             // Propagate existing ala_exception with additional context
-            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties::CollectiveProperties() -> ") + e.what());
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties<E>::CollectiveProperties() -> ") + e.what());
         }
     }
 
-    CollectiveProperties (E* v, DIMENSIONS& like)     
+    CollectiveProperties (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
     {
         try
         {        
             this->ptr = v;
-            like.incrementReferenceCount();        
-            this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()}; 
-            this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+            //like.incrementReferenceCount();        
+            this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()};             
+            this->reference_count = rc;
+
+            DIMENSIONSPROPERTIES_PTR current = like.getNext();
+
+            if (current != NULL)
+            {
+                current->incrementReferenceCount();
+
+                current = current->getNext();
+            }
+            
         }
         catch (ala_exception& e)
         {
             // Propagate existing ala_exception with additional context
-            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties::CollectiveProperties(E*, DIMENSIONS&) -> ") + e.what());
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties<E>::CollectiveProperties(E*, DIMENSIONS&) -> ") + e.what());
+        }
+    }
+
+    CollectiveProperties (const Collective<E>& other) throw (ala_exception)
+    {
+        try
+        {
+            this->ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                    
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+            {
+                this->ptr[i] = other[i];
+            }
+
+            this->shape = new DIMENSIONS(other.getShape());
+
+            this->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
+        }
+        catch (std::bad_alloc& e)
+        {
+            // CRITICAL: Memory allocation failure - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties<E>::CollectiveProperties(Collective<E>&) Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+        catch (std::length_error& e)
+        {
+            // CRITICAL: Length constraint violation - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties<E>::CollectiveProperties(Collective<E>&) Error: ") + cc_tokenizer::String<char>(e.what())); 
+        } 
+        catch (ala_exception& e)
+        {
+            // Propagate existing ala_exception with additional context
+            // NO cleanup performed assuming this is also a critical error
+            throw ala_exception(cc_tokenizer::String<char>("CollectiveProperties<E>::CollectiveProperties(Collective<E>&) -> ") + cc_tokenizer::String<char>(e.what())); 
         }
     }
 
@@ -79,7 +124,7 @@ struct Collective
        
     public:
         // Default constructor
-        Collective (void)
+        Collective (void) throw (ala_exception)
         {             
             try
             {
@@ -124,13 +169,13 @@ struct Collective
             4. v != NULL + invalid dimensions → throw exception
 
          */
-        Collective (E* v, DIMENSIONS& like) throw (ala_exception)
+        Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {   
             try 
             {
                 if (like.getN() > 0)
                 {
-                    this->properties = new CollectiveProperties<E> (v, like);
+                    this->properties = new CollectiveProperties<E> (v, like, rc);
                 }
                 else 
                 {
@@ -220,8 +265,25 @@ struct Collective
          * @param like Shape information (of type DIMENSIONS)
          * @param rc Initial reference count
          */
-        Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc) throw (ala_exception) 
-        {               
+        /*Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc) throw (ala_exception) 
+        { 
+            try 
+            {
+                if (like.getN() > 0)
+                {
+                    this->properties = new CollectiveProperties<E> (v, like);
+                }
+                else 
+                {
+                    this->properties = new CollectiveProperties<E> ();
+                }
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) -> ") + e.what()); 
+            }
+            
             try
             { 
                 //this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>)));
@@ -230,16 +292,16 @@ struct Collective
                 {                        
                     if (like.getN())
                     {
-                        /*this->properties->ptr = v;
-                        this->properties->shape = like;
-                        this->properties->reference_count = rc;*/    
+                        //this->properties->ptr = v;
+                        //this->properties->shape = like;
+                        //this->properties->reference_count = rc;
                     }
                     else 
                     { 
                         // NO cleanup performed assuming this is also a critical error                                               
                         throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
-                }             
+                }*/             
                 /*
                     Special Case: When 'v' is NULL but 'like' has a valid shape.
                     This allows creating a Collective object with a defined shape but no allocated data.
@@ -253,17 +315,17 @@ struct Collective
     
                     Use Case: This is useful for creating placeholder objects or delaying memory allocation.
                  */                    
-                else if (like.getN()) // v is NULL
+                /*else if (like.getN()) // v is NULL
                 {
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = like;
-                    this->properties->reference_count = rc;*/
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = like;
+                    //this->properties->reference_count = rc;
                 }
                 else
                 {
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
-                    this->properties->reference_count = rc;*/
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    //this->properties->reference_count = rc;
                 }                
             }
             catch (std::bad_alloc& e)
@@ -284,7 +346,7 @@ struct Collective
                 // NO cleanup performed assuming this is also a critical error
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&, cc_tokenizer::string_character_traits<char>::size_type) -> ") + cc_tokenizer::String<char>(e.what()));
             }                  
-        }
+        }*/
         
         /**
         /* @brief Constructs a `Collective` object, allocating memory for its elements based on the
@@ -312,9 +374,25 @@ struct Collective
         * - The `shape` member is initialized by copying the dimensions from `like`.
         * - The reference count is set to 0.
         */
-        Collective (E *v, DIMENSIONS_PTR like) throw (ala_exception)
-        {              
-            try
+        Collective (E *v, DIMENSIONS_PTR like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
+        { 
+            try 
+            {
+                if (like.getN() > 0)
+                {
+                    this->properties = new CollectiveProperties<E> (v, *like, rc);
+                }
+                else 
+                {
+                    this->properties = new CollectiveProperties<E> ();
+                }
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS&) -> ") + e.what()); 
+            }             
+            /*try
             { 
                 this->properties = reinterpret_cast<CollectiveProperties<E>*>(cc_tokenizer::allocator<char>().allocate(sizeof(CollectiveProperties<E>)));
 
@@ -322,16 +400,16 @@ struct Collective
                 {                        
                     if (like->getN())
                     {
-                        /*this->properties->ptr = v;
-                        this->properties->shape = *like;
-                        this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+                        //this->properties->ptr = v;
+                        //this->properties->shape = *like;
+                        //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
                     }
                     else 
                     {   
                         // NO cleanup performed assuming this is also a critical error                                               
                         throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSIONS_PTR) Error: Cannot initialize with data when dimensions specify zero elements"));
                     }                                         
-                }             
+                }*/             
                 /*
                     Special Case: When 'v' is NULL but 'like' has a valid shape.
                     This allows creating a Collective object with a defined shape but no allocated data.
@@ -345,17 +423,17 @@ struct Collective
     
                     Use Case: This is useful for creating placeholder objects or delaying memory allocation.
                  */                    
-                else if (like->getN()) // v is NULL
+                /*else if (like->getN()) // v is NULL
                 {
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = *like;
-                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = *like;
+                    //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
                 }
                 else
                 {
-                    /*this->properties->ptr = NULL;
-                    this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
-                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
+                    //this->properties->ptr = NULL;
+                    //this->properties->shape = DIMENSIONS {0, 0, NULL, NULL};
+                    //this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;
                 }
             }
             catch (std::bad_alloc& e)
@@ -375,37 +453,16 @@ struct Collective
                 // Propagate existing ala_exception with additional context
                 // NO cleanup performed assuming this is also a critical error
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(E*, DIMENSTIONS_PTR) -> ") + cc_tokenizer::String<char>(e.what()));
-            }
+            }*/
         }
 
         Collective (const Collective<E>& other) throw (ala_exception)
         {   
-            if (other.properties != NULL) 
+            if (other.properties != NULL && other.getShape().getN() > 0) 
             {
                 try 
                 {
-                    //ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
-
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
-                    {
-                        (*this)[i] = other[i];
-                    }
-
-                    /*shape = other.getShape().copy();
-
-                    this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT;*/
-                }
-                catch (std::length_error& e)
-                {
-                    // CRITICAL: Length constraint violation - system should terminate immediately
-                    // NO cleanup performed - this is a fatal error requiring process exit
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what())); 
-                }
-                catch (std::bad_alloc& e)
-                {   
-                    // CRITICAL: Memory allocation failure - system should terminate immediately
-                    // NO cleanup performed - this is a fatal error requiring process exit             
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) Error: ") + cc_tokenizer::String<char>(e.what()));
+                    this->properties = new CollectiveProperties<E>(other);  
                 }
                 catch (ala_exception& e)
                 {
@@ -460,7 +517,10 @@ struct Collective
         { 
             if (this->properties != NULL)
             {
-                this->properties->shape->decrementReferenceCount();
+                if (this->properties->shape != NULL)
+                {
+                    this->properties->shape->decrementReferenceCount();
+                }
 
                 if (this->properties->reference_count > 0)
                 {
@@ -470,7 +530,7 @@ struct Collective
 
             if (this->properties != NULL && this->properties->reference_count == 0)
             {
-                if (this->properties->ptr != NULL)
+                if (this->properties->ptr != NULL && this->properties->shape != NULL)
                 {
                     cc_tokenizer::allocator<E>().deallocate(this->properties->ptr, this->properties->shape->getN());
 
@@ -522,7 +582,6 @@ struct Collective
 
             if (other.properties != NULL)
             {
-
                 this->decrementReferenceCount();
 
                 this->properties = other.properties;
@@ -534,16 +593,30 @@ struct Collective
             return *this;
         }
         
-        Collective& operator-= (Collective& other) throw (ala_exception)
+        Collective& operator-= (const Collective& other) throw (ala_exception)
         {
-            if (!(getShape() == other.getShape()))
+            // Check for self-assignment                       
+            if (this == &other)
+            {
+                return *this;
+            }
+
+            if (!(this->getShape() == other.getShape()))
             {
                 throw ala_exception("Collective::operator-=() Error: Matrix subtraction is only defined when the matrices have the same dimensions.");
             }
 
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getN(); i++)
+            try 
             {
-                (*this)[i] = (*this)[i] - other[i];
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getN(); i++)
+                {
+                    (*this)[i] = (*this)[i] - other[i];
+                }
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context                
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator-=() -> ") + e.what());
             }
 
             return *this;    
@@ -576,6 +649,59 @@ struct Collective
             if (index >= this->getShape().getN())
             {
                 throw ala_exception("Collective::operator[] Error: Index out of range.");
+            }
+            
+            return this->properties->ptr[index];
+        }
+
+        /**
+         * @brief Const version of the subscript operator for read-only element access
+         * 
+         * This is the const-qualified overload of operator[] that allows accessing elements
+         * from const Collective objects. This method is essential for const-correctness
+         * and enables the use of Collective objects in const contexts (e.g., const references,
+         * const parameters, const member functions).
+         * 
+         * @details Why both const and non-const versions are needed:
+         * - The non-const version (E& operator[]) is called when the Collective object
+         *   itself is non-const. It returns a non-const reference, allowing modification
+         *   of the element.
+         * - This const version (const E& operator[] const) is called when the Collective 
+         *   object is const (e.g., passed as const Collective<E>& parameter). It returns
+         *   a const reference, preventing modification of the element.
+         * - The compiler automatically selects the appropriate overload based on the
+         *   const-ness of the object being accessed.
+         * - Without this const version, you cannot access elements from const Collective
+         *   objects, which would break const-correctness and prevent use in copy constructors,
+         *   const member functions, and other const contexts.
+         * 
+         * Function signature breakdown:
+         * - 'const E&' return type: Returns a const reference to prevent modification
+         * - 'const' after parameter list: Indicates this method doesn't modify the object
+         * - This const qualifier makes it a different overload from the non-const version
+         * 
+         * @param index Zero-based index of the element to access
+         * @return const E& Const reference to the element at the specified index
+         * @throws ala_exception If properties is NULL, ptr is NULL, or index is out of range
+         * 
+         * @note This method performs the same bounds checking as the non-const version
+         * @see operator[](cc_tokenizer::string_character_traits<char>::size_type) - non-const version
+         */
+        const E& operator[] (cc_tokenizer::string_character_traits<char>::size_type index) const throw (ala_exception)
+        {            
+            if (this->properties == NULL)
+            {
+                throw ala_exception("Collective::operator[]() const Error: Attempting to access properties which are not set yet");
+            }
+
+            if (this->properties->ptr == NULL)
+            {
+                throw ala_exception("Collective::operator[]() const Error: Attempting to access an element in an empty array");
+            }
+
+            if (index >= this->getShape().getN())
+            {
+                throw ala_exception("Collective::operator[]() const Error: Index out of range.");
             }
             
             return this->properties->ptr[index];
@@ -622,45 +748,22 @@ struct Collective
             }
             catch (const std::bad_alloc& e)
             {
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));    
             }
             catch (const std::length_error& e)
             {
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
             catch (ala_exception& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() -> ") + cc_tokenizer::String<char>(e.what()));
             }  
-
-            /*F* ptr = NULL;
-            
-            try
-            {
-                ptr = cc_tokenizer::allocator<F>().allocate(getShape().getN());
-
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < shape.getN(); i++)
-                {
-                    ptr[i] = (*this)[i] * n;
-                }
-            }
-            catch (const std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));    
-            }
-            catch (const std::length_error& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
-            }
-            catch (ala_exception& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + cc_tokenizer::String<char>(e.what()));
-            }   
-
-            /*for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < shape.getN(); i++)
-            {
-                ptr[i] = (*this)[i] * n;
-            }*/
 
             return Collective<F>{NULL, DIMENSIONS{0, 0, NULL, NULL}};
         }
@@ -741,7 +844,7 @@ struct Collective
                         }
                         catch(ala_exception e)
                         {
-                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
+                            throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() -> ") + e.what());
                         }
                     }
                     else if (other.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
@@ -1368,7 +1471,7 @@ struct Collective
                         }
 
                         //*this = Collective<E>{ptr, other.getShape().copy()};
-                        left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                        left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(left_operand, other);
 
@@ -1405,7 +1508,7 @@ struct Collective
                         }
 
                         //other = Collective<E>{ptr, other.getShape().copy()};
-                        right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                        right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(*this, right_operand);
 
@@ -1450,7 +1553,7 @@ struct Collective
                          }
 
                          /*this = Collective<E>{ptr, other.getShape().copy()};*/
-                         left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                         left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
  
                          //return Numcy::dot(left_operand, other);
 
@@ -1485,7 +1588,7 @@ struct Collective
                          }
 
                          //other = Collective<E>{ptr, other.getShape().copy()};
-                         right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                         right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                          //return Numcy::dot(*this, right_operand);
 
@@ -1520,7 +1623,7 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[0];
                 }
-                ret = Collective<E>{local_ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                ret = Collective<E>{local_ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
             }
             catch (const std::bad_alloc& e)
             {
@@ -1545,7 +1648,7 @@ struct Collective
                 {
                     local_ptr[i] = (*this)[i] + other[i];
                 }
-                ret = Collective<E>{local_ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                ret = Collective<E>{local_ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
             }
             catch (const std::bad_alloc& e)
             {

@@ -120,7 +120,7 @@ class Numcy
                     throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
                 }    
                 
-                Collective<E> ret = Collective<E>{ptr, b.getShape().copy()};
+                Collective<E> ret = Collective<E>{ptr, b.getShape()/*.copy()*/};
 
                 return ret;
             };
@@ -159,7 +159,7 @@ class Numcy
                     throw ala_exception(cc_tokenizer::String<char>("Numcy::dot() -> ") + cc_tokenizer::String<char>(e.what()));
                 }    
                 
-                Collective<E> ret = Collective<E>{ptr, a.getShape()/*a.getShape().copy()*/};
+                Collective<E> ret = Collective<E>{ptr, a.getShape()/*.copy()*/};
 
                 return ret;
             };                        
@@ -217,7 +217,7 @@ class Numcy
                     throw ala_exception(cc_tokenizer::String<char>("Numcy::matmul() -> ") + cc_tokenizer::String<char>(e.what()));    
                 }
 
-                Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.shape.getNumberOfColumns(), a.shape.getNumberOfRows().getNumberOfInnerArrays(), NULL, NULL}};
+                Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.getShape().getNumberOfColumns(), a.getShape().getNumberOfRows(), NULL, NULL}};
                 
                 return ret;
             };
@@ -2040,9 +2040,10 @@ static std::random_device rd;
 
         /*  
             Compute the outer product of two vectors.       
-            @m1, shape (1, M) of 1 row and M columns
-            @m2, shape (1, N) of 1 row and N columns
-            The shape of returned matrix is (M, N)
+            @m1, shape (1, M) of 1 row and M columns...
+            @m2, shape (1, N) of 1 row and N columns...
+            The shape of returned matrix is (M, N)...
+            N rows, N columns
                         
             The values of m1.getShape().getN() and m2.getShape().getN() might or might not be the same.
 

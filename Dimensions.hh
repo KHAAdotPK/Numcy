@@ -29,7 +29,23 @@ typedef struct DimensionsProperties
          */        
         cc_tokenizer::string_character_traits<char>::size_type reference_count; // Reference counting per slice
 
-        friend struct Dimensions; // To allow Dimensions to access private members  
+        friend struct Dimensions; // To allow Dimensions to access private members
+
+    public:
+        void incrementReferenceCount(void) 
+        {
+            this->reference_count++;
+        }
+
+        DimensionsProperties* getNext(void) 
+        {
+            return this->next;
+        }
+
+        DimensionsProperties* getPrevious(void)
+        {
+            return prev;
+        }
 
 }DIMENSIONSPROPERTIES;
 typedef DIMENSIONSPROPERTIES* DIMENSIONSPROPERTIES_PTR;
