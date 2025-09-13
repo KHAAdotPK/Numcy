@@ -556,12 +556,12 @@ struct Collective
             this->decrementReferenceCount();
         }
 
-        /*Collective<E>& operator= (E* p)
+        Collective<E>& operator= (E* p)
         {
             this->ptr = p;
 
             return *this;
-        }*/
+        }
 
         /**
          * @brief Copy Assignment Operator
@@ -1951,13 +1951,13 @@ struct Collective
     {
         E* slice_ptr = NULL;
         Collective<E> ret;
-
+        
         if (!(n > 0))
         {            
             throw ala_exception("Collective::slice() Error: The slice length 'n' must be greater than zero.");
         }
 
-        if ((i + n) > /*shape.getN()*/ getShape().getN())
+        if ((i + n) > /*shape.getN()*/ this->getShape().getN())
         {
             throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data.");
         }
@@ -1965,15 +1965,13 @@ struct Collective
         try
         {
             slice_ptr = cc_tokenizer::allocator<E>().allocate(n);
-
+                        
             for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < n; j++)
-            {
-                slice_ptr[j] = ptr[i + j];
+            {            
+                slice_ptr[j] = (*this)[i + j];
             }
-
-            ret = Collective<E>{slice_ptr, DIMENSIONS{n, 1, NULL, NULL}};
-
-            cc_tokenizer::allocator<E>().deallocate(slice_ptr, n);
+            
+            ret = Collective<E>{slice_ptr, DIMENSIONS{n, 1, NULL, NULL}};            
         }
         catch(const std::bad_alloc& e)
         {

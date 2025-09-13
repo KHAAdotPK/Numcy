@@ -60,7 +60,7 @@ class Numcy
          */
         template<typename E = double>
         static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
-        {   
+        {           
             /*
                 Ensure that the shapes of matrices "a" and "b" are compatible for the dot product.
 
@@ -72,7 +72,7 @@ class Numcy
                    that the dot product cannot be computed due to shape incompatibility.
              */          
             if (!(a.getShape() == b.getShape()))
-            {
+            {                
                 /*
                     Ensure the number of columns in "a" matches the number of rows in "b"
 
@@ -104,8 +104,7 @@ class Numcy
                     for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
                     {
                         ptr[i] = a[i] * b[i];
-                    }
-                    //ret = Collective<E>{ptr, a.getShape().copy()};                    
+                    }                    
                 }    
                 catch(std::length_error& e)
                 {
@@ -382,6 +381,9 @@ class Numcy
                                     stores the result in a Collective<E> named product
                                  */
                                 Collective<E> product = Numcy::dot(u, v);
+
+                                product = Numcy::sum(product);
+
 
                                 //std::cout<< product.getShape().getNumberOfColumns() << product.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << std::endl;
 
