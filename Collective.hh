@@ -830,7 +830,7 @@ struct Collective
                             }
 
                             //*this = Collective<E>{ptr, other.getShape().copy()};
-                            left_operand = Collective<E>{ptr, other.getShape().copy()};
+                            left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/};
 
                             return Numcy::dot(left_operand, other);
                         }
@@ -863,7 +863,7 @@ struct Collective
                             }
 
                             //other = Collective<E>{ptr, other.getShape().copy()};
-                            right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                            right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(*this, right_operand);
                         }
@@ -906,7 +906,7 @@ struct Collective
                             }
 
                             //*this = Collective<E>{ptr, other.getShape().copy()};
-                            left_operand = Collective<E>{ptr, other.getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                            left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(left_operand, other);
                         }
@@ -939,7 +939,7 @@ struct Collective
                             }
 
                             //other = Collective<E>{ptr, other.getShape().copy()};
-                            right_operand = Collective<E>{ptr, getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+                            right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                             return Numcy::dot(*this, right_operand);
                         }
@@ -1127,7 +1127,7 @@ struct Collective
             throw ala_exception("Collective::operator / () Error: Cannot divide matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, *((*this).getShape().copy())}; /* SIGMA CHANGE NEEDED HERE */
+        return Collective<E>{ptr, /***/((*this).getShape()/*.copy()*/)}; /* SIGMA CHANGE NEEDED HERE */
     }
 
     /**

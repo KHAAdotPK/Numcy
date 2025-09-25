@@ -565,7 +565,7 @@ class Numcy
                         throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() Error: ") + cc_tokenizer::String<char>(e.what()));
                     }
 
-                    return Collective<E>{ptr, like.copy()};
+                    return Collective<E>{ptr, like/*.copy()*/};
                 }
                 
                 /*
@@ -1576,7 +1576,7 @@ static std::random_device rd;
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::sqrt() Error: ") + cc_tokenizer::String<char>(e.what()));
             }
                         
-            return Collective<E>{ptr, a.getShape().copy()};
+            return Collective<E>{ptr, a.getShape()/*.copy()*/};
         } 
 
         /**
