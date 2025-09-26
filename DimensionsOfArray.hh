@@ -198,7 +198,7 @@ typedef struct DimensionsOfArray
          * @note The allocated properties structure must be properly deallocated in the
          *       destructor to prevent memory leaks.
          */
-        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn, cc_tokenizer::string_character_traits<char>::size_type rc = 1) throw (ala_exception)
+        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {
             try
             {
