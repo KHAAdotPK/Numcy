@@ -29,24 +29,63 @@ struct CollectiveProperties
         }
     }
 
+    /**
+     * @brief Constructs a CollectiveProperties object by wrapping an existing array with specified dimensions.
+     * 
+     * This constructor initializes a CollectiveProperties object that manages memory and dimensionality
+     * information for multi-dimensional arrays. It handles both 2D and higher-dimensional arrays by
+     * creating appropriate dimension metadata and managing reference counts for shared dimension nodes.
+     * 
+     * @param v Pointer to the underlying array data to be managed
+     * @param like Reference to DIMENSIONS object specifying the array structure and dimensions
+     * @param rc Reference count for the newly created head node (defaults to NUMCY_DEFAULT_REFERENCE_COUNT)
+     * @throws ala_exception if memory allocation fails or dimension processing encounters errors
+     * 
+     * @note For 2D arrays: Creates a simple dimension node with columns and rows.
+     * @note For multi-dimensional arrays: Creates a head node and manages reference counts for 
+     *       subsequent dimension nodes in the linked list.
+     * @note The constructor maintains exception safety by properly cleaning up resources if exceptions occur.
+     */
     CollectiveProperties (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
     {
         try
         {        
             this->ptr = v;
-            //like.incrementReferenceCount();        
-            this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), like.getNext(), like.getPrev()};             
-            this->reference_count = rc;
+            DIMENSIONSOFARRAY dima = like.getDimensionsOfArray();
 
+            // Handle 2D arrays (simple case - no additional linked list nodes)
+            if (dima.size() == 2) 
+            {   
+                /*
+                 * Create a new dimension node for 2D arrays.
+                 * Since this is not a multi-dimensional array, we only need basic dimensions
+                 * without additional linked list nodes for higher dimensions.
+                 */
+                this->shape = new DIMENSIONS{like.getNumberOfColumns(), like.getNumberOfRows(), NULL, NULL};
+            }
+            else // Multi-dimensional arrays (3D or higher)
+            {
+                /*
+                 * Create head node for multi-dimensional arrays.
+                 * The head node will link to existing dimension nodes from the 'like' parameter,
+                 * allowing shared ownership of dimension metadata through reference counting.
+                 */
+                this->shape = new DIMENSIONS(0, dima[0], like.getNext(), like.getPrev());
+            }
+            this->reference_count = rc; // Set reference count for the newly created head node
+            
+            /*
+             * Increment reference counts for all subsequent dimension nodes in the linked list.
+             * This ensures proper shared ownership of dimension metadata across multiple
+             * CollectiveProperties objects that may share the same dimension structure.
+             */
             DIMENSIONSPROPERTIES_PTR current = like.getNext();
-
-            if (current != NULL)
+            while (current != NULL)
             {
                 current->incrementReferenceCount();
 
                 current = current->getNext();
-            }
-            
+            }            
         }
         catch (ala_exception& e)
         {

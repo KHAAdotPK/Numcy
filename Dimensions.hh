@@ -1311,13 +1311,13 @@ typedef struct Dimensions
             return *this;
          }
     
-         std::cout<< "OK HERE 1" << std::endl;
+         //std::cout<< "OK HERE 1" << std::endl;
 
          // Release this object's current references
          // This will deallocate nodes if we were the last reference holder
          this->decrementReferenceCount();
 
-         std::cout<< "OK HERE 2" << std::endl;
+         //std::cout<< "OK HERE 2" << std::endl;
 
          // Share ownership with the source object (shallow copy)
          // Both objects now point to the same linked list structure
