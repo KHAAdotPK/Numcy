@@ -1127,7 +1127,7 @@ struct Collective
             throw ala_exception("Collective::operator / () Error: Cannot divide matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, *((*this).getShape().copy())}; /* SIGMA CHANGE NEEDED HERE */
+        return Collective<E>{ptr, /***/((*this).getShape()/*.copy()*/)}; /* SIGMA CHANGE NEEDED HERE */
     }
 
     /**
@@ -1379,15 +1379,15 @@ struct Collective
         }
         catch(const std::bad_alloc& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + cc_tokenizer::String<char>(e.what()));
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ (F) Error: ") + cc_tokenizer::String<char>(e.what()));
         }
         catch (const std::length_error& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + cc_tokenizer::String<char>(e.what()));
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ (F) Error: ") + cc_tokenizer::String<char>(e.what()));
         }
         catch (ala_exception& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + cc_tokenizer::String<char>(e.what()));
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator+ (F) -> ") + cc_tokenizer::String<char>(e.what()));
         }
          
         return ret;        

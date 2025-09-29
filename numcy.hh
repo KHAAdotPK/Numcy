@@ -2276,7 +2276,7 @@ static std::random_device rd;
                 *ptr = static_cast<E>(1);
                 Collective<E> plusOne = Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
                 u_e_plusOne = u_e + plusOne;
-                oneDivided_by_u_e_plusOne = Numcy::ones<E>(/**u.getShape().copy()*/ u) / u_e_plusOne;                
+                oneDivided_by_u_e_plusOne = Numcy::ones<E>(u.getShape()) / u_e_plusOne;                
             }
             catch (const std::bad_alloc& e)
             {
