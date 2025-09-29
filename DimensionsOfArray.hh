@@ -198,7 +198,7 @@ typedef struct DimensionsOfArray
          * @note The allocated properties structure must be properly deallocated in the
          *       destructor to prevent memory leaks.
          */
-        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn, cc_tokenizer::string_character_traits<char>::size_type rc = 1) throw (ala_exception)
+        DimensionsOfArray(cc_tokenizer::string_character_traits<char>::size_type* p, cc_tokenizer::string_character_traits<char>::size_type nn, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {
             try
             {
@@ -491,13 +491,17 @@ typedef struct DimensionsOfArray
          */
         cc_tokenizer::string_character_traits<char>::size_type getNumberOfInnerArrays(void) const throw (ala_exception)
         {
-            // Check if the instance is badly formed, must have at least 2 dimensions and ptr must be valid
             if (this->properties == NULL || this->properties->ptr == NULL)
             {
                 throw ala_exception("DIMENSIONSOFARRAY::getNumberOfInnerArrays() Error: This instance is badly formed.");
             }
-
-            // Initialize a variable 'ret' to 1; it will store the result
+         
+            /*
+                Initialize to 1 (multiplicative identity) for correct dimension multiplication
+                - Ensures first multiplication ret * dimension[0] works correctly
+                - Handles edge case of 2D arrays properly
+                - Result should never be 0 unless the value at index 0 of the array is 0
+             */
             cc_tokenizer::string_character_traits<char>::size_type ret = 1;
 
             try 
