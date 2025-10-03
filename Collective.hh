@@ -1225,7 +1225,7 @@ struct Collective
             ptr[i] = (*this)[i] - (E)subtrahend;
         }
 
-        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape().copy()}; /* SIGMA CHANGE NEEDED HERE */
+        return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
     }
 
     /**
@@ -1850,7 +1850,7 @@ struct Collective
 
         if (!dim.getN())
         {
-            throw ala_exception("Collective::slice() Error: The slice length must be greater than zero.");
+            throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice length must be greater than zero.");
         }
 
         switch (axis)
@@ -1859,7 +1859,7 @@ struct Collective
             {
                 if ((i + dim.getN()) > getShape().getN())
                 {
-                    throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data for \"AXIS_NONE\".");
+                    throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice range exceeds the bounds of the available data for \"AXIS_NONE\".");
                 }
 
                 try
@@ -1872,22 +1872,39 @@ struct Collective
                     }
 
 
-                    ret = Collective<E>{slice_ptr, *(dim.copy())};
+                    ret = Collective<E>{slice_ptr, /**(dim.copy())*/ dim};
 
-                    cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
+                    /*cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
 
-                    slice_ptr = NULL;
+                    slice_ptr = NULL;*/
                 }
                 catch(const std::bad_alloc& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));
                 }
                 catch(const std::length_error& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));
                 }
             }
             break;
+            case AXIS_ROWS:
+            {                
+                if (i >= this->getShape().getNumberOfColumns())
+                {                    
+                    throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice range exceeds the bounds of the available data for \"AXIS_ROWS\".");    
+                }
+                
+                slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
+                
+                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < dim.getN(); j++)
+                {
+                    slice_ptr[j] = (*this)[j*(this->getShape().getNumberOfColumns())  + i];
+                }
+
+                ret = Collective<E>{slice_ptr, dim};
+            }
+            break;            
             case AXIS_COLUMN:
             {                
                 /*
@@ -1895,7 +1912,7 @@ struct Collective
                  */
                 if (dim.getN() > getShape().getDimensionsOfArray().getNumberOfInnerArrays() || i > getShape().getNumberOfColumns())
                 {
-                    throw ala_exception("Collective::slice() Error: The slice range exceeds the bounds of the available data for \"AXIS_COLUMN\".");
+                    throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice range exceeds the bounds of the available data for \"AXIS_COLUMN\".");
                 }
                                 
                 try
@@ -1906,19 +1923,19 @@ struct Collective
                         slice_ptr[j] = ptr[i + j*getShape().getNumberOfColumns()];
                     }
                                         
-                    ret = Collective<E>{slice_ptr, *(dim.copy())};
+                    ret = Collective<E>{slice_ptr, /**(dim.copy())*/ dim};
                                         
-                    cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
+                    /*cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
 
-                    slice_ptr = NULL;
+                    slice_ptr = NULL;*/
                 }
                 catch(const std::bad_alloc& e)
                 {
-                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));
                 }
                 catch (const std::length_error& e)
                 {
-                     throw ala_exception(cc_tokenizer::String<char>("Collective::slice() Error: ") + cc_tokenizer::String<char>(e.what()));  
+                     throw ala_exception(cc_tokenizer::String<char>("Collective::slicecc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));  
                 }              
             }
             break;
@@ -2027,6 +2044,33 @@ struct Collective
         
         //return slice_ptr;
         return ret;
+    }
+
+    void update_column(cc_tokenizer::string_character_traits<char>::size_type index, const Collective<E>& other) throw (ala_exception)
+    {
+        if (!(index < this->getShape().getNumberOfColumns()))
+        {
+            throw ala_exception("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) Error:  Index out of range.");
+        }
+
+        /*std::cout<< "---->>>>>> " << other.getShape().getN() << ", " << this->getShape().getNumberOfRows() << std::endl;*/
+
+        if (!(other.getShape().getN() <= this->getShape().getNumberOfRows()))
+        {
+            throw ala_exception("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) Error:  Values to tore are more than the places.");
+        }
+        
+        try
+        {
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+            {
+                (*this)[i*(this->getShape().getNumberOfColumns())  + index] = other[i];
+            }
+        }
+        catch(ala_exception& e)        
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) -> ") + e.what());
+        }        
     }
 };
 #endif

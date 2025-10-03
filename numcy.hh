@@ -59,7 +59,7 @@ class Numcy
          *       or second matrix is a scalar.
          */
         template<typename E = double>
-        static Collective<E> dot(Collective<E> a, Collective<E> b) throw (ala_exception)
+        static Collective<E> dot(Collective<E>& a, Collective<E>& b) throw (ala_exception)
         {           
             /*
                 Ensure that the shapes of matrices "a" and "b" are compatible for the dot product.
@@ -79,13 +79,15 @@ class Numcy
                     And in terms of inner most array...                        
                     Check if the last dimension of "a" is the same size as the second-to-last dimension of "b"
                  */                
-                if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                if (a.getShape().getNumberOfColumns() != b.getShape().getNumberOfRows() /*getDimensionsOfArray().getNumberOfInnerArrays()*/)
                 {   
                     /*                         
                         Check if "b" is a scalar (1x1 matrix)
                      */             
                     if (!(b.getShape().getN() == 1))
-                    {                                            
+                    {  
+                        std::cout<< "a = " << a.getShape().getNumberOfColumns() << ", " << a.getShape().getNumberOfRows() << std::endl;
+                        std::cout<< "b = " << b.getShape().getNumberOfColumns() << ", " << b.getShape().getNumberOfRows() << std::endl;
                         throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product. Both matrices must have the same shape for element-wise multiplication, or the number of columns in the first matrix must match the number of rows in the second matrix. Alternatively, the second matrix must be a scalar (1x1).");
                     }
                 }
