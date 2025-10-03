@@ -533,7 +533,12 @@ class Numcy
                     // Xavier (Glorot) initialization parameters
                     E mean = 0.0;
                     E variance = 2.0 / (input_size + output_size);
+                    // Xavier standard deviation                    
                     E stddev = std::sqrt(variance);  // Standard deviation for normal distribution
+
+                    // Xavier (Glorot) Uniform initialization
+                    // Uniform in range [-limit, +limit] where limit = sqrt(6 / (input_size + output_size))
+                    E limit = std::sqrt(6.0 / (input_size + output_size));
 
                     E* ptr = nullptr;
 
@@ -543,7 +548,7 @@ class Numcy
 
                         if (normal_or_uniformreal_distribution) // Normal distribution
                         {
-                            std::normal_distribution<E> dist(mean, stddev);
+                            std::normal_distribution<E> dist(mean, stddev /* xavier_std */);
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
                             {
                                 ptr[i] = dist(gen);
@@ -551,20 +556,31 @@ class Numcy
                         }
                         else // Uniform distribution (not implemented in this function)
                         {
-                            throw ala_exception("Uniform distribution not implemented in this function.");
+                            std::uniform_real_distribution<E> dist(-limit, limit);
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
+                            {
+                                ptr[i] = dist(gen);
+                            }
+                            //throw ala_exception("Uniform distribution not implemented in this function.");
                         }
                     }
                     catch (std::length_error& e)
                     {
-                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() -> ") + cc_tokenizer::String<char>(e.what()));
+                        // CRITICAL: Memory allocation failure - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier(DIMENSIONS, bool) -> ") + cc_tokenizer::String<char>(e.what()));
                     }
                     catch (std::bad_alloc& e)
                     {
-                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() -> ") + cc_tokenizer::String<char>(e.what()));
+                        // CRITICAL: Length constraint violation - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier(DIMENSIONS, bool) -> ") + cc_tokenizer::String<char>(e.what()));
                     }
                     catch (ala_exception& e)
                     {
-                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier() Error: ") + cc_tokenizer::String<char>(e.what()));
+                        // Propagate existing ala_exception with additional context
+                        // NO cleanup performed assuming this is also a critical error
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_xavier(DIMENSIONS, bool) -> ") + cc_tokenizer::String<char>(e.what()));
                     }
 
                     return Collective<E>{ptr, like/*.copy()*/};
