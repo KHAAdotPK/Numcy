@@ -2068,7 +2068,7 @@ struct Collective
             }
         }
         catch(ala_exception& e)        
-        {
+        {            
             throw ala_exception(cc_tokenizer::String<char>("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) -> ") + e.what());
         }        
     }
