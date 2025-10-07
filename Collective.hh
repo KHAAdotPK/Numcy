@@ -207,7 +207,7 @@ struct Collective
             3. Both invalid → default empty state
             4. v != NULL + invalid dimensions → throw exception
 
-         */
+         */        
         Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {   
             try 
