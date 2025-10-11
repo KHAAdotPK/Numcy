@@ -1457,7 +1457,7 @@ struct Collective
     Collective<E> operator+ (Collective<E>& other) throw (ala_exception)
     {
         /*static_assert(!std::is_same<E, Collective<typename E::value_type>>::value, 
-            "E must not be a Collective type.");*/
+         "E must not be a Collective type.");*/
 
         /*
             No need, left and right oprands can be same instances
@@ -1466,12 +1466,12 @@ struct Collective
         {
             return *this;
         }*/
-        
-        if (!(other.getShape().getN() > 0))
+                
+        if (!(other.getShape().getN() > 0) || !(this->getShape().getN() > 0))
         {
-            throw ala_exception("Collective::operator+() Error: The 'other' Collective has an invalid shape with zero elements.");
+            throw ala_exception("Collective::operator+() Error: The `left` or `right` oprand has an invalid shape with zero elements.");
         }
-
+    
         /*
             BROADCAST ACROSS CORRECT AXIS
             In matrix broadcasting, element-wise operations happen between arrays of different shapes.
@@ -1513,7 +1513,7 @@ struct Collective
                         left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(left_operand, other);
-
+                        
                         return left_operand;
                     }
                     catch (std::bad_alloc& e)
@@ -1550,7 +1550,7 @@ struct Collective
                         right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                         //return Numcy::dot(*this, right_operand);
-
+                        
                         return right_operand;
                     }
                     catch (std::bad_alloc& e)
@@ -1595,7 +1595,7 @@ struct Collective
                          left_operand = Collective<E>{ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
  
                          //return Numcy::dot(left_operand, other);
-
+                         
                          return left_operand;
                      }
                      catch (std::bad_alloc& e)
@@ -1630,7 +1630,7 @@ struct Collective
                          right_operand = Collective<E>{ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
 
                          //return Numcy::dot(*this, right_operand);
-
+                         
                          return right_operand;
                      }
                      catch (std::bad_alloc& e)
@@ -1663,6 +1663,8 @@ struct Collective
                     local_ptr[i] = (*this)[i] + other[0];
                 }
                 ret = Collective<E>{local_ptr, getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
+
+                return ret;
             }
             catch (const std::bad_alloc& e)
             {
@@ -1688,6 +1690,8 @@ struct Collective
                     local_ptr[i] = (*this)[i] + other[i];
                 }
                 ret = Collective<E>{local_ptr, other.getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
+
+                return ret;
             }
             catch (const std::bad_alloc& e)
             {
@@ -1702,12 +1706,36 @@ struct Collective
                 throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + e.what());
             }
         }
+        else if ((this->getShape().getNumberOfRows() == other.getShape().getNumberOfRows()) && (this->getShape().getNumberOfColumns() == other.getShape().getNumberOfColumns())) // Shape is not same but rows columns are same...
+        {   
+            try
+            {                     
+                local_ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getN());
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
+                {
+                    local_ptr[i] = (*this)[i] + other[i];
+                }
+                ret = Collective<E>{local_ptr, this->getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
+
+                return ret;
+            }
+            catch (const std::bad_alloc& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());
+            }
+            catch (const std::length_error& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() Error: ") + e.what());                
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator+() -> ") + e.what());
+            }
+        }        
         else
         {
             throw ala_exception("Collective::operator+() Error: The shapes of the two collectives are incompatible for addition.");
-        }
-
-        return ret;
+        }          
     }
      
     Collective<E> operator_plus (Collective<E>& other) 

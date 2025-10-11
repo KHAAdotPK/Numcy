@@ -1431,7 +1431,7 @@ typedef struct Dimensions
         {
             return false;
         }
-
+                
         /*
          * Detailed node-by-node comparison:
          * Traverse both linked lists simultaneously and compare each node
@@ -1458,7 +1458,7 @@ typedef struct Dimensions
             receiver = receiver->next;
             other_receiver = other_receiver->next;
         }
-
+               
         // At this point, both pointers should be NULL if lists are same length
         // If one is NULL and other isn't, the lists have different lengths
         return (receiver == NULL && other_receiver == NULL);
