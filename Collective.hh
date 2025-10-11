@@ -2045,30 +2045,64 @@ struct Collective
         //return slice_ptr;
         return ret;
     }
-
+    
+    /*
+     * Updates a specific column in the current Collective matrix with values from another Collective object.
+     * Assumptions:
+     * - Current object is a 2D matrix
+     * - 'other' object is a 1D vector
+     * - Matrix uses row-major storage layout
+     * 
+     * This function replaces the values in the specified column of the current matrix with values from
+     * the 'other' Collective. The 'other' Collective must be a vector (1D array) whose length matches
+     * or is less than the number of rows in the current matrix.
+     * 
+     * @param index: The zero-based column index to update. Must be within the valid column range of the current matrix.
+     * @param other: The source Collective object containing the new values for the column. Must be a 1D array
+     *               with length <= number of rows in the current matrix.
+     * 
+     * @throws ala_exception: 
+     *   - If the provided index is out of bounds for the current matrix columns
+     *   - If the 'other' Collective has more elements than the number of rows in the current matrix
+     *   - If any memory access error occurs during the update operation
+     * 
+     * Note: The current Collective must be a 2D matrix (or higher dimensional array stored in row-major order).
+     *       The function assumes row-major storage where element access is: [row * num_columns + column]
+     */
     void update_column(cc_tokenizer::string_character_traits<char>::size_type index, const Collective<E>& other) throw (ala_exception)
     {
+        // Validate that the target column index is within bounds
         if (!(index < this->getShape().getNumberOfColumns()))
         {
             throw ala_exception("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) Error:  Index out of range.");
         }
 
-        /*std::cout<< "---->>>>>> " << other.getShape().getN() << ", " << this->getShape().getNumberOfRows() << std::endl;*/
+        /* Debug output - commented out but kept for reference
+           std::cout<< "---->>>>>> " << other.getShape().getN() << ", " << this->getShape().getNumberOfRows() << std::endl;*/
 
+        // Validate that the source vector has appropriate length
+        // The 'other' Collective should have at most the same number of elements as rows in current matrix  
         if (!(other.getShape().getN() <= this->getShape().getNumberOfRows()))
         {
             throw ala_exception("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) Error:  Values to tore are more than the places.");
         }
         
+        // Perform the column update operation
+
         try
         {
+            // Iterate through each element in the source vector
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getN(); i++)
             {
+                // Calculate the linear index for the target element in column-major order
+                // Formula: [current_row * total_columns + target_column]
+                // This accesses the 'index'-th column in the i-th row
                 (*this)[i*(this->getShape().getNumberOfColumns())  + index] = other[i];
             }
         }
         catch(ala_exception& e)        
-        {            
+        {    
+            // Re-throw the exception with additional context about the calling function        
             throw ala_exception(cc_tokenizer::String<char>("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) -> ") + e.what());
         }        
     }
