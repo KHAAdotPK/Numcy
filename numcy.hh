@@ -593,7 +593,7 @@ class Numcy
                     Generates random numbers following a normal distribution with a specified mean and standard deviation, and it returns an object of type Collective<E>. 
                  */
 		        template <typename E = double>
-                static Collective<E> randn(DIMENSIONS& like, E seed = 0, AXIS axis = AXIS_NONE) throw (ala_exception)
+                static Collective<E> randn(DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type seed = 0, AXIS axis = AXIS_NONE) throw (ala_exception)
                 {   
                     cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     
