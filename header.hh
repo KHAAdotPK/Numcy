@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <random>
+
 /*#include <type_traits>*/ // For std::is_same and static_assert
 
 #include "../ala_exception/ala_exception.hh"

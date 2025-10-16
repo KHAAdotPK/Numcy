@@ -412,6 +412,99 @@ class Numcy
         {
             public:
 
+                /**
+                 * Generates random samples from a Binomial distribution Binomial(n, p)
+                 * 
+                 * Simulates a Binomial(n, p) distribution using n independent Bernoulli trials per sample.
+                 * Each sample represents the number of successes in n independent trials, where each trial
+                 * has probability p of success. Uses the Mersenne Twister (std::mt19937) with a 
+                 * uniform_real_distribution for high-quality, reproducible random numbers.
+                 * Accurate for all n and p, though performance may degrade for very large n due to per-trial sampling.
+                 * 
+                 * For n < 25, this direct Bernoulli sampling approach is efficient and statistically sound.
+                 * For larger n values, consider alternative algorithms (BTPE, inverse transform) for better performance.
+                 * 
+                 * Mathematical Properties:
+                 * - Mean: n * p
+                 * - Variance: n * p * (1 - p)
+                 * - Support: {0, 1, 2, ..., n}
+                 * 
+                 * @tparam E Numeric type for probability (default: double)
+                 * @param n Number of Bernoulli trials per sample (must be >= 0)
+                 * @param p Probability of success in each trial (must satisfy 0 <= p <= 1)
+                 * @param like DIMENSIONS object specifying output shape and size
+                 * @return Collective<size_type> Container with binomial random variates
+                 * 
+                 * @throws ala_exception On memory allocation failure or invalid parameters
+                 * @throws std::bad_alloc On memory allocation failure  
+                 * @throws std::length_error On dimension size constraints violation
+                 * 
+                 * @note For n >= 25 or extreme p values, consider optimized sampling algorithms
+                 * @warning No parameter validation performed - caller must ensure 0 <= p <= 1 and n >= 0
+                 * @see numpy.random.binomial
+                 */
+                template <typename E = double>
+                static Collective<cc_tokenizer::string_character_traits<char>::size_type> binomial(cc_tokenizer::string_character_traits<char>::size_type n, E p, DIMENSIONS& like)
+                {
+                    /*
+
+                        using index_t = cc_tokenizer::string_character_traits<char>::size_type;
+                        index_t* ptr = NULL;
+                     */
+
+                    cc_tokenizer::string_character_traits<char>::size_type* ptr = NULL;
+                    
+                    // Random number generator
+                    std::random_device rd;  
+                    std::mt19937 gen(rd()); // Mersenne Twister engine
+                    std::uniform_real_distribution<E> dist(0.0, 1.0); // Seed random number generator
+                    
+                    try 
+                    {
+                        ptr = cc_tokenizer::allocator<cc_tokenizer::string_character_traits<char>::size_type>().allocate(like.getN());
+
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getN(); i++)
+                        {
+                            cc_tokenizer::string_character_traits<char>::size_type success = 0;
+
+                            // n Bernoulli trials
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < n; j++)
+                            {
+                                // Generate uniform random number between 0.0 and 1.0                                
+                                E random_value = dist(gen);
+
+                                // Success if random number <= probability p
+                                if (random_value <= p)
+                                {
+                                    success += 1;
+                                }                        
+                            }
+
+                            ptr[i] = success;
+                        }
+                    }                    
+                    catch (std::length_error& e)
+                    {
+                        // CRITICAL: Memory allocation failure - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::binomial(cc_tokenizer::string_character_traits<char>::size_type, E, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        // CRITICAL: Length constraint violation - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::binomial(cc_tokenizer::string_character_traits<char>::size_type, E, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        // Propagate existing ala_exception with additional context
+                        // NO cleanup performed assuming this is also a critical error
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::binomial(cc_tokenizer::string_character_traits<char>::size_type, E, DIMENSIONS&) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+
+                    return Collective<cc_tokenizer::string_character_traits<char>::size_type>{ptr, like};
+                }
+
                 /*
                     The current weight initialization uses a random Gaussian distribution via Numcy::Random::randn<t>.
                     While this is a valid approach, it’s often a good idea to use more sophisticated initialization techniques like Xavier (Glorot) or He initialization to ensure better convergence during training, especially for deep networks.
@@ -517,7 +610,7 @@ class Numcy
                 static Collective<E> randn_xavier(DIMENSIONS like, bool normal_or_uniformreal_distribution = true) throw (ala_exception)
                 {
                     cc_tokenizer::string_character_traits<char>::size_type num_weights = like.getN();
-
+                    
                     if (!num_weights)
                     {
                         throw ala_exception("Numcy::Random::randn_xavier() Error: Shape of the array must not be zero.");
