@@ -457,7 +457,7 @@ class Numcy
                     // Random number generator
                     std::random_device rd;  
                     std::mt19937 gen(rd()); // Mersenne Twister engine
-                    std::uniform_real_distribution<E> dist(0.0, 1.0); // Seed random number generator
+                    std::uniform_real_distribution<E> dist(NUMCY_DEFAULT_MEAN, NUMCY_DEFAULT_STANDARD_DEVIATION); // Seed random number generator
                     
                     try 
                     {
