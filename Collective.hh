@@ -1081,20 +1081,105 @@ struct Collective
 
             return ((*this) / divisor);
         }*/
-        /*template <typename F = double>
-        Collective<E> operator/ (F x) throw (ala_exception)
+    
+    /******************************************************************************
+     * @brief Division operator for Collective array with scalar value
+     * 
+     * @tparam F Scalar type (default: double). Must be arithmetic type.
+     * @param x Scalar divisor value
+     * 
+     * @return Collective<E> New Collective object containing element-wise division results
+     * 
+     * @throws ala_exception with descriptive message for:
+     *   - Non-arithmetic type F (compile-time)
+     *   - Division by zero (x == 0)
+     *   - Empty or malformed array (getN() == 0)
+     *   - Memory allocation failures
+     *   - Arithmetic errors during division
+     * 
+     * @note This operation creates a NEW Collective object and does not modify
+     *       the original. All elements are divided by the scalar value x.
+     * 
+     * @warning Division by zero is explicitly checked and will throw exception.
+     *          For floating-point types, very small values may still cause
+     *          numerical instability.
+     * 
+     * @example
+     *   Collective<double> arr{...};
+     *   auto result = arr / 2.0;  // All elements divided by 2
+     * 
+     * @memory_complexity O(n) - allocates new array of same size as original
+     * @time_complexity O(n) - single pass through all elements
+     * 
+     * @exception_safety Strong guarantee - either operation completes successfully
+     *                  or original object remains unchanged with proper cleanup
+     ******************************************************************************/    
+    template <typename F = double>
+    Collective<E> operator / (F x) throw (ala_exception) // TODO, Deprecated eventually need to go
+    {
+        /*
+            TODO, Simplify Type Constraints 
+            static_assert(std::is_arithmetic<F>::value, 
+                "Collective<E>::operator / (F) Error: Type must be arithmetic");
+         */
+        // First ensure the type is supported by your allocator
+        static_assert (
+            std::is_same<F, char>::value ||
+            std::is_same<F, float>::value ||
+            std::is_same<F, double>::value ||
+            std::is_same<F, unsigned char>::value ||
+            std::is_same<F, int>::value ||
+            std::is_same<F, wchar_t>::value ||
+            std::is_same<F, size_t>::value,
+            "Collective<F>::operator / (F) Error: Type not supported by cc_tokenizer::allocator<T>"
+        );
+
+        if (x == F{0})
         {
-            Collective<E> ret;
+            throw ala_exception("Collective<E>::operator / (F) Error: Division by zero");
+        }
+        
+        if (!(*this).getShape().getN())
+        {
+            throw ala_exception("Collective<E>::operator / (F) Error: Malformed shape of the array received as dividend.");
+        }
 
-           for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < this->getShape().getN(); i++)
-           {
-                (*this)[i] = (F)((*this)[i]) / x;
-           }
+        Collective<E> ret; 
+        
+        E* ptr = NULL;
 
-           ret = (*this);
+        try
+        {
+            ptr = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
 
-            return ret;
-        }*/
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < this->getShape().getN(); i++)
+            {
+                ptr[i] = (*this)[i] / x;
+            }
+
+            ret = Collective<E>{ptr, this->getShape()};
+        }
+        catch (std::bad_alloc& e)
+        {
+            // CRITICAL: Memory allocation failure - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("Collective<E>::operator / (F) Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+        catch (std::length_error& e)
+        {
+            // CRITICAL: Length constraint violation - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("Collective<E>::operator / (F) Error: ") + cc_tokenizer::String<char>(e.what())); 
+        }
+        catch (ala_exception& e)
+        {
+            // Propagate existing ala_exception with additional context
+            // NO cleanup performed assuming this is also a critical error
+            throw ala_exception(cc_tokenizer::String<char>("Collective<E>::operator / (F) -> ") + cc_tokenizer::String<char>(e.what())); 
+        }               
+                                
+        return ret;
+    }
 
     template <typename F = double>
     Collective<E> operator / (Collective<F>& divisor) throw (ala_exception)
