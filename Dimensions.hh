@@ -8,6 +8,8 @@
 #ifndef KHAA_PK_DIMENSIONS_HEADER_HH
 #define KHAA_PK_DIMENSIONS_HEADER_HH
 
+#define DIMENSIONS_RESHAPE_CONSTANT 2
+
 struct Dimensions;
 
 // Linked List of 2D Slices. Each node represents one 2D matrix within a higher-dimensional tensor
@@ -37,6 +39,14 @@ typedef struct DimensionsProperties
             this->reference_count++;
         }
 
+        void decrementReferenceCount(void)
+        {
+            if (this->reference_count > 0)
+            {
+                this->reference_count--;
+            }
+        }
+
         DimensionsProperties* getNext(void) 
         {
             return this->next;
@@ -46,6 +56,27 @@ typedef struct DimensionsProperties
         {
             return prev;
         }
+
+        void setColumns(cc_tokenizer::string_character_traits<char>::size_type c)
+        {
+            this->columns = c;
+        }
+
+        void setRows(cc_tokenizer::string_character_traits<char>::size_type r)
+        {
+            this->rows = r;
+        }
+
+        void setNext(DimensionsProperties* n)
+        {
+            this->next = n;
+        }
+
+        void setPrev(DimensionsProperties* p)
+        {
+            this->prev = p;
+        }
+
 
 }DIMENSIONSPROPERTIES;
 typedef DIMENSIONSPROPERTIES* DIMENSIONSPROPERTIES_PTR;
@@ -255,7 +286,7 @@ typedef struct Dimensions
             {
                 cc_tokenizer::string_character_traits<char>::size_type i = 0;            
                 DimensionsProperties* current = NULL;
-
+                
                 try 
                 {
                     // Allocate memory for the root properties node
@@ -345,7 +376,7 @@ typedef struct Dimensions
                 // Handle case where dimensionsOfArray.size() <= 1
                 // This is an invalid state, multi dimensional arrays require at least 2 dimensions
                 throw ala_exception("DIMENIONS::DIMENSIONS(DIMENSIONSOFARRAY&) Error: Empty or single dimension array provided. At least 2 dimensions (rows and columns) required for multi-dimensional array construction.");
-            }       
+            }            
         }
     
     /**
@@ -603,7 +634,8 @@ typedef struct Dimensions
             // Decrement reference count with underflow protection
             if (current->reference_count > 0)
             {
-                current->reference_count--;
+                //current->reference_count--;
+                current->decrementReferenceCount();
             }
 
             // If reference count reaches zero, deallocate the node
@@ -1129,7 +1161,7 @@ typedef struct Dimensions
              }
 
              // Allocate memory for the dimensions array
-             cc_tokenizer::string_character_traits<char>::size_type *ptr = reinterpret_cast<cc_tokenizer::string_character_traits<char>::size_type*>(cc_tokenizer::allocator<char>().allocate(n * sizeof(cc_tokenizer::string_character_traits<char>::size_type)));
+             cc_tokenizer::string_character_traits<char>::size_type *ptr = cc_tokenizer::allocator<cc_tokenizer::string_character_traits<char>::size_type>().allocate(n);
 
              // Traverse the linked list and populate the dimensions array
              cc_tokenizer::string_character_traits<char>::size_type i = 0;
@@ -1252,6 +1284,43 @@ typedef struct Dimensions
         }
 
         return NULL;
+     }
+
+     void reShape(Dimensions& like) throw (ala_exception)
+     { 
+         this->decrementReferenceCount();
+
+         try
+         {
+             this->properties = reinterpret_cast<DIMENSIONSPROPERTIES_PTR>(cc_tokenizer::allocator<char>().allocate(sizeof(DIMENSIONSPROPERTIES))); 
+             
+             this->properties->rows = like.getDimensionsOfArray()[0]; 
+             this->properties->columns = 0;    
+             
+             if (like.getNumberOfLinks() == 1) 
+             {
+                this->properties->columns = like.getDimensionsOfArray()[1];
+             }
+       
+             this->properties->reference_count = NUMCY_DEFAULT_REFERENCE_COUNT_BEFORE_INCREMENT;
+                                                    
+             this->properties->next = like.getNext();
+             this->properties->prev = like.getPrev();
+
+             this->incrementReferenceCount();             
+         }
+         catch (std::bad_alloc& e)
+         {
+             // CRITICAL: Memory allocation failure - system should terminate immediately
+             // NO cleanup performed - this is a fatal error requiring process exit
+             throw ala_exception(cc_tokenizer::String<char>("DIMENSIONS::DIMENSIONS() Error: ") + cc_tokenizer::String<char>(e.what())); 
+         }
+         catch (std::length_error& e)
+         {
+             // CRITICAL: Length constraint violation - system should terminate immediately
+             // NO cleanup performed - this is a fatal error requiring process exit
+             throw ala_exception(cc_tokenizer::String<char>("DIMENSIONS::DIMENSIONS() Error: ") + cc_tokenizer::String<char>(e.what())); 
+         } 
      }
 
     /**

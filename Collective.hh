@@ -147,7 +147,7 @@ struct Collective
     private:
         E* ptr;
                            
-        DIMENSIONS shape;
+        //DIMENSIONS shape;
 
         /*
          * Reference counting tracks the number of active references (pointers or other ways to access) to an object.
@@ -520,11 +520,39 @@ struct Collective
         DIMENSIONS getShape(void) const throw (ala_exception)
         {
             if (this->properties != NULL && this->properties->shape != NULL)
-            {
+            {    
                 return *(this->properties->shape);
             }
             
             return DIMENSIONS{0, 0, NULL, NULL};
+        }
+
+        void reShape(DIMENSIONSOFARRAY& like) throw (ala_exception)
+        {
+            if (!(like.size() > this->getShape().getDimensionsOfArray().size()))
+            {
+                throw ala_exception("Collective<E>::reshape(DIMENSIONSOFARRAY&) Error: You can only extend the shape");
+            }
+                    
+            DIMENSIONS dim = DIMENSIONS(like);
+
+            /*DIMENSIONSOFARRAY darray = dim.getDimensionsOfArray();
+
+            std::cout<< "darray: ";
+            for (int i = 0; i < darray.size(); i++)
+            {
+                std::cout<< darray[i] << ", ";
+            }
+
+            std::cout<< std::endl;*/
+
+            /*std::cout<< " 1 In Collective: " << dim.getReferenceCounts()[0] << std::endl;*/
+
+            //std::cout<< "RESHAPE = " << dim.getNumberOfLinks() << std::endl;
+ 
+            this->properties->shape->reShape(dim);
+
+            /*std::cout<< " 2 In Collective: " << this->properties->shape->getReferenceCounts()[0] << std::endl;*/
         }
 
         cc_tokenizer::string_character_traits<char>::size_type getReferenceCount(void) const
