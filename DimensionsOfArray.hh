@@ -298,7 +298,7 @@ typedef struct DimensionsOfArray
          * @note The bounds checking ensures safe access but adds a small performance overhead.
          *       For performance-critical code, consider adding an unchecked access method.
          */
-        cc_tokenizer::string_character_traits<char>::size_type operator[](cc_tokenizer::string_character_traits<char>::size_type index) const throw (ala_exception)
+        cc_tokenizer::string_character_traits<char>::size_type& operator[](cc_tokenizer::string_character_traits<char>::size_type index) const throw (ala_exception)
         {  
             if (this->properties != NULL && this->properties->ptr != NULL && index < this->size()) 
             {
