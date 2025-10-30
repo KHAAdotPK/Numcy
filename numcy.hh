@@ -1023,14 +1023,19 @@ static std::random_device rd;
                 case AXIS_COLUMN: 
                 {                    
                     // Validate shapes for column-wise concatenation
-                    if (a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                    if (!(a.getShape().getN() == 0 || b.getShape().getN() == 0) && !(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == b.getShape().getDimensionsOfArray().getNumberOfInnerArrays()))
                     {
                         throw ala_exception("Numcy::concatenate() Error: Number of rows must match for column-wise \"AXIS_COLUMN\" concatenation.");
                     }
                     
                     // Calculate the new shape
                     cc_tokenizer::string_character_traits<char>::size_type newColumns = a.getShape().getNumberOfColumns() + b.getShape().getNumberOfColumns();
-                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getNumberOfRows();
+
+                    if (newRows == 0)
+                    {
+                        newRows = b.getShape().getNumberOfRows();
+                    }
 
                     // Allocate memory for the concatenated array
                     try 
