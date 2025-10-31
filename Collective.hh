@@ -2100,6 +2100,48 @@ struct Collective
         return ret;
     }
 
+    Collective<E> update(cc_tokenizer::string_character_traits<char>::size_type i, Collective<E>& other, AXIS axis = AXIS_NONE) throw(ala_exception)
+    {
+        /*
+            With exceptions being used, I don't need checks like these, though not certain yet.
+         */
+        if (!other.getShape().getN())
+        {
+            throw ala_exception("Collective::update(cc_tokenizer::string_character_traits<char>::size_type, Collective<E>&, AXIS) Error: The `other` Collective has an invalid shape with zero elements.");
+        }
+
+        try
+        {        
+            switch(axis)
+            {
+                case AXIS_NONE:
+                break;
+                case AXIS_COLUMN:
+                break;
+                case AXIS_ROWS:
+                    if (i >= this->getShape().getNumberOfColumns())
+                    {                    
+                        throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The starting index exceeds the column bounds of the available data for \"AXIS_ROWS\".");
+                    }
+
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfRows(); j++)
+                    {
+                        for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < other.getShape().getNumberOfColumns(); k++)
+                        {
+                            (*this)[j*this->getShape().getNumberOfColumns() + i + k] = other[j*other.getShape().getNumberOfColumns() + k];
+                        }
+                    }
+                break;
+            }
+        }
+        catch (ala_exception& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective::update(cc_tokenizer::string_character_traits<char>::size_type, Collective<E>&, AXIS) -> ") + e.what());
+        }
+
+        return other;
+    }
+
     /*
     Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, DIMENSIONS& dim) throw(ala_exception)
     {

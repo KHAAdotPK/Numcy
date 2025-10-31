@@ -57,6 +57,11 @@
 #define IMPLIED_NUMBER_OF_COLUMNS_IN_INNER_MOST_ARRAYS(p, n) p[(n - IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray + 1)]
 
 /* 
+    Mental Model:
+    - axis=0 -> Going down the rows
+    - axis=1 -> Going across the columns
+    - axis=-1 -> The last axis (columns in 2D array)
+
     The axis along which a particular operation should be performed. 
     The axis=-1, is the last axis. 
     The axis=1, second axis(in two dimentional array it means the columns)
