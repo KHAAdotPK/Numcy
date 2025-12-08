@@ -497,7 +497,20 @@ struct Collective
 
         Collective (const Collective<E>& other) throw (ala_exception)
         {   
-            if (other.properties != NULL && other.getShape().getN() > 0) 
+            //std::cout<< "IN COPY CONSTRUCTOR OF COLLECTIVE " << other.properties << ", " << other.getShape().getN() << std::endl;
+
+            try 
+            {
+                this->properties = new CollectiveProperties<E>(other);  
+            }
+            catch (ala_exception& e)
+            {
+                // Propagate existing ala_exception with additional context
+                // NO cleanup performed assuming this is also a critical error
+                throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(&) -> ") + cc_tokenizer::String<char>(e.what())); 
+            } 
+
+            /*if (other.properties != NULL && other.getShape().getN() > 0) 
             {
                 try 
                 {
@@ -514,7 +527,7 @@ struct Collective
             {
                 // NO cleanup performed assuming this is also a critical error
                 throw ala_exception(cc_tokenizer::String<char>("Collective::Collective(Collective<E>&) Error: Cannot initialize with data when either the source is NULL or dimensions specify zero elements"));               
-            }                                        
+            } */                                       
         } 
 
         DIMENSIONS getShape(void) const throw (ala_exception)
