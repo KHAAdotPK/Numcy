@@ -1999,14 +1999,14 @@ struct Collective
      */
     Collective<E> slice(cc_tokenizer::string_character_traits<char>::size_type i, DIMENSIONS& dim, AXIS axis = AXIS_NONE) throw(ala_exception)
     {
-        E* slice_ptr;
+        E* slice_ptr = NULL;
         Collective<E> ret;
 
         if (!dim.getN())
         {
             throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice length must be greater than zero.");
         }
-
+        
         switch (axis)
         {
             case AXIS_NONE:
@@ -2019,15 +2019,14 @@ struct Collective
                 try
                 {
                     slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
-
+                    
                     for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < dim.getN(); j++)
                     {
-                        slice_ptr[j] = ptr[i + j];
-                    }
-
+                        slice_ptr[j] = (*this)[i + 1] /*ptr[i + j]*/;
+                    }                    
 
                     ret = Collective<E>{slice_ptr, /**(dim.copy())*/ dim};
-
+                    
                     /*cc_tokenizer::allocator<E>().deallocate(slice_ptr, dim.getN());
 
                     slice_ptr = NULL;*/
@@ -2089,7 +2088,7 @@ struct Collective
                     slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());                    
                     for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
                     {
-                        slice_ptr[j] = ptr[i + j*getShape().getNumberOfColumns()];
+                        slice_ptr[j] = /*ptr*/(*this)[i + j*getShape().getNumberOfColumns()];
                     }
                                         
                     ret = Collective<E>{slice_ptr, /**(dim.copy())*/ dim};
