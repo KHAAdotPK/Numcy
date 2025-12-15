@@ -531,6 +531,57 @@ typedef struct DimensionsOfArray
                     
             return ret;
         }
+
+        /*
+            getNumberOfInnerArraysActual()
+    
+            Purpose:
+            Returns the number of inner arrays (i.e., the size of the penultimate dimension)
+            when the array has 2 or more dimensions. This represents the count of sub-arrays
+            contained within each element of the outermost dimension.
+        
+            Behavior by number of dimensions:
+                - For a 3D (or higher) array, e.g., [2][3][19]: returns 3  
+                  (each of the 2 outermost elements contains 3 inner arrays of size 19)
+                - For a 2D array, e.g., [2][3]: returns 2  
+                  (each of the 2 rows contains 3 elements – the "inner arrays" are of size 2 when viewed from the outer perspective)
+                - Return 0 for any invalid array shape (size < 2  
+                    
+            Implementation notes:
+                - Dimensions are assumed to be stored in the container from outermost (index 0)
+                  to innermost (index size()-1).
+                - When size() >= 2, the penultimate dimension is accessed at index size() - 2.
+                - The constant IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray
+                  is defined as 2 to achieve this indexing and to guard against access when fewer
+                  than 2 dimensions are present.
+                - The default return value of 0 serves as an error for size < 2.
+    
+            Throws:
+                ala_exception if the instance is not properly initialized
+                (properties == NULL or properties->ptr == NULL or properties->n < 2).
+                Also propagates any ala_exception thrown by operator[] with a prefixed message
+                for better diagnostics.
+         */
+        cc_tokenizer::string_character_traits<char>::size_type getNumberOfInnerArraysActual(void) const throw (ala_exception)
+        {
+            if (this->properties == NULL || this->properties->ptr == NULL || this->size() < IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray)
+            {
+                throw ala_exception("DIMENSIONSOFARRAY::getNumberOfInnerArraysActual() Error: This instance is badly formed.");
+            }
+          
+            cc_tokenizer::string_character_traits<char>::size_type ret = 0;
+
+            try 
+            {                                
+                ret = (*this)[this->size() - IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray];                 
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("DIMENSIONSOFARRAY::getNumberOfInnerArraysActual() -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+                    
+            return ret;
+        }
                 
         /*
          * Returns the rank (number of dimensions) of the tensor shape.
