@@ -582,6 +582,49 @@ typedef struct DimensionsOfArray
                     
             return ret;
         }
+
+        /**
+         * @brief Returns the size of the innermost array dimension.
+         *
+         * This function retrieves the dimension value for the innermost (highest-rank)
+         * array dimension. In a multi-dimensional array declaration such as
+         * `int arr[d1][d2][d3][d4]`, the container holds the dimensions in order
+         * {d1, d2, d3, d4}, and the innermost size is the last element (d4).
+         *
+         * The function performs additional validation beyond basic null/empty checks:
+         * it ensures the container has at least the minimum number of dimensions
+         * required by the specific use case
+         * (IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray).
+         *
+         * @return The size of the innermost dimension as a size_type.
+         *
+         * @throws ala_exception If the instance is invalid:
+         *         - properties or properties->ptr is NULL,
+         *         - the container is empty, or
+         *         - size() is less than IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray.
+         *           Also throws a wrapped ala_exception if operator[] access fails
+         *           (e.g., out-of-bounds, though the prior size check should prevent this).
+         */
+        cc_tokenizer::string_character_traits<char>::size_type getSizeOfInnerMostArray(void) const throw (ala_exception)
+        {
+            if (this->properties == NULL || this->properties->ptr == NULL || this->size() < IMPLIED_ROWS_COLUMNS_OF_LAST_LINK_RETURNED_BY_METHOD_getDimensionsOfArray)
+            {
+                throw ala_exception("DIMENSIONSOFARRAY::getSizeOfInnerMostArray() Error: This instance is badly formed.");
+            }
+          
+            cc_tokenizer::string_character_traits<char>::size_type ret = 0;
+
+            try 
+            {                                
+                ret = (*this)[this->size() - 1];                 
+            }
+            catch (ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("DIMENSIONSOFARRAY::getSizeOfInnerMostArray() -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+                    
+            return ret;
+        }
                 
         /*
          * Returns the rank (number of dimensions) of the tensor shape.

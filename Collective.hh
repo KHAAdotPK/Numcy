@@ -892,16 +892,16 @@ struct Collective
              */
             if (getShape().getNumberOfColumns() == other.getShape().getNumberOfColumns())
             {
-                if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() != other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+                if (getShape().getNumberOfRows() != other.getShape().getNumberOfRows())
                 {
-                    if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                    if (getShape().getNumberOfRows() == 1)
                     {
                         // Reshape current operand (Left-hand operand) to match other operand's rows
                         // Reshape receiver operand (Left hand oprand or multiplicand)
                         try 
                         {
-                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
-                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getNumberOfRows()*getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getNumberOfRows(); i++)
                             {
                                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
                                 {
@@ -927,14 +927,14 @@ struct Collective
                             throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() -> ") + e.what());
                         }
                     }
-                    else if (other.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                    else if (other.getShape().getNumberOfRows() == 1)
                     {   
                         // Reshape other operand (Right-hand operand) to match current operand's rows
                         // Reshape multiplier opernad (right hand oprand)
                         try 
                         {
-                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
-                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getNumberOfRows()*other.getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getNumberOfRows(); i++)
                             {
                                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
                                 {
@@ -966,7 +966,7 @@ struct Collective
                 Automatically broadcast across column axis:
                 Reshape so that a column vector has same number of columns as the other oprand matrix    
              */
-            else if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            else if (getShape().getNumberOfRows() == other.getShape().getNumberOfRows())
             {
                 if (getShape().getNumberOfColumns() != other.getShape().getNumberOfColumns())
                 {
@@ -976,8 +976,8 @@ struct Collective
                         // Reshape receiver operand (Left hand operand or multiplicand)
                         try 
                         {
-                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
-                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getNumberOfRows()*other.getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getNumberOfRows(); i++)
                             {
                                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
                                 {
@@ -1009,8 +1009,8 @@ struct Collective
                         // Reshape multiplier opernad (right hand operand)
                         try 
                         {
-                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
-                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getNumberOfRows()*getShape().getNumberOfColumns());
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getNumberOfRows(); i++)
                             {
                                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
                                 {
@@ -1616,16 +1616,16 @@ struct Collective
           */
          if (getShape().getNumberOfColumns() == other.getShape().getNumberOfColumns())
          {
-            if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() != other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            if (getShape().getNumberOfRows() != other.getShape().getNumberOfRows())
             {
-                if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                if (getShape().getNumberOfRows() == 1)
                 {
                     // Reshape current operand (Left-hand operand) to match other operand's rows
                     // Reshape receiver operand (Left hand oprand or multiplicand)
                     try 
                     {
-                        E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
-                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getNumberOfRows()*getShape().getNumberOfColumns());
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getNumberOfRows(); i++)
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
                             {
@@ -1655,14 +1655,14 @@ struct Collective
                         throw ala_exception(cc_tokenizer::String<char>("Collective::operator*() Error: ") + e.what());
                     }
                 }
-                else if (other.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == 1)
+                else if (other.getShape().getNumberOfRows() == 1)
                 {   
                     // Reshape other operand (Right-hand operand) to match current operand's rows
                     // Reshape multiplier opernad (right hand oprand)
                     try 
                     {
-                        E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
-                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getNumberOfRows()*other.getShape().getNumberOfColumns());
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getNumberOfRows(); i++)
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
                             {
@@ -1698,7 +1698,7 @@ struct Collective
             Automatically broadcast across column axis:
             Reshape so that a column vector has same number of columns as the other oprand matrix    
           */
-         else if (getShape().getDimensionsOfArray().getNumberOfInnerArrays() == other.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+         else if (getShape().getNumberOfRows() == other.getShape().getNumberOfRows())
          {
              if (getShape().getNumberOfColumns() != other.getShape().getNumberOfColumns())
              {
@@ -1708,8 +1708,8 @@ struct Collective
                      // Reshape receiver operand (Left hand operand or multiplicand)
                      try 
                      {
-                         E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getDimensionsOfArray().getNumberOfInnerArrays()*other.getShape().getNumberOfColumns());
-                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                         E* ptr = cc_tokenizer::allocator<E>().allocate(getShape().getNumberOfRows()*other.getShape().getNumberOfColumns());
+                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getNumberOfRows(); i++)
                          {
                              for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < other.getShape().getNumberOfColumns(); j++)
                              {
@@ -1743,8 +1743,8 @@ struct Collective
                      // Reshape multiplier opernad (right hand operand)
                      try 
                      {
-                         E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*getShape().getNumberOfColumns());
-                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                         E* ptr = cc_tokenizer::allocator<E>().allocate(other.getShape().getNumberOfRows()*getShape().getNumberOfColumns());
+                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < other.getShape().getNumberOfRows(); i++)
                          {
                              for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < getShape().getNumberOfColumns(); j++)
                              {
@@ -2078,7 +2078,7 @@ struct Collective
                 /*
                     At the moment, we are only considering the case where the slice is along the column axis 
                  */
-                if (dim.getN() > getShape().getDimensionsOfArray().getNumberOfInnerArrays() || i > getShape().getNumberOfColumns())
+                if (dim.getN() > getShape().getNumberOfRows() || i > getShape().getNumberOfColumns())
                 {
                     throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice range exceeds the bounds of the available data for \"AXIS_COLUMN\".");
                 }
@@ -2086,7 +2086,7 @@ struct Collective
                 try
                 {
                     slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());                    
-                    for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                    for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < getShape().getNumberOfRows(); j++)
                     {
                         slice_ptr[j] = /*ptr*/(*this)[i + j*getShape().getNumberOfColumns()];
                     }

@@ -184,11 +184,11 @@ class Numcy
                 //cc_tokenizer::allocator<char> alloc_obj;
                 //E* ptr = reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E)*(a.shape.getNumberOfRows().getNumberOfInnerArrays()*b.shape.getNumberOfColumns())));
 
-                E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.getShape().getNumberOfColumns());
+                E* ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfRows()/*.getDimensionsOfArray().getNumberOfInnerArrays()*/*b.getShape().getNumberOfColumns());
                 /*
                     TODO, check if it is actually working
                  */                
-                memset(ptr, 0, sizeof(E)*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()*b.getShape().getNumberOfColumns());
+                memset(ptr, 0, sizeof(E)*a.getShape().getNumberOfRows()*b.getShape().getNumberOfColumns());
                 
                 /*
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < b.getShape().getNumberOfColumns(); i++)
@@ -201,11 +201,11 @@ class Numcy
 
                 try                 
                 {   
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                     {
                         for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < b.getShape().getNumberOfColumns(); j++)
                         {
-                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); k++)
+                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getNumberOfRows(); k++)
                             {                                                            
                                 ptr[i*b.getShape().getNumberOfColumns() + j] =  ptr[i*b.getShape().getNumberOfColumns() + j] + a[i*a.getShape().getNumberOfColumns() + k] * b[k*b.getShape().getNumberOfColumns() + j];
                             }
@@ -268,8 +268,8 @@ class Numcy
         {
             Collective<E> x;
 
-            /*std::cout<< "u = " << u.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << " - " << u.getShape().getNumberOfColumns() << std::endl;
-            std::cout<< "v = " << v.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << " - " << v.getShape().getNumberOfColumns() << std::endl;*/
+            /*std::cout<< "u = " << u.getShape().getNumberOfRows() << " - " << u.getShape().getNumberOfColumns() << std::endl;
+            std::cout<< "v = " << v.getShape().getNumberOfRows() << " - " << v.getShape().getNumberOfColumns() << std::endl;*/
 
             /*Collective<E> v_t = Numcy::transpose<E>(v);*/
 
@@ -387,7 +387,7 @@ class Numcy
                                 product = Numcy::sum(product);
 
 
-                                //std::cout<< product.getShape().getNumberOfColumns() << product.getShape().getDimensionsOfArray().getNumberOfInnerArrays() << std::endl;
+                                //std::cout<< product.getShape().getNumberOfColumns() << product.getShape().getNumberOfRows() << std::endl;
 
                                 //Numcy::enorm(u);
                                 //Numcy::enorm(v);
@@ -616,7 +616,7 @@ class Numcy
                         throw ala_exception("Numcy::Random::randn_xavier() Error: Shape of the array must not be zero.");
                     }
 
-                    cc_tokenizer::string_character_traits<char>::size_type input_size = like.getDimensionsOfArray().getNumberOfInnerArrays(); // Number of input units to the current layer
+                    cc_tokenizer::string_character_traits<char>::size_type input_size = like.getNumberOfRows()/*.getDimensionsOfArray().getNumberOfInnerArrays()*/; // Number of input units to the current layer
                     cc_tokenizer::string_character_traits<char>::size_type output_size = like.getNumberOfColumns(); // Number of output units from the current layer
 
                     // Random number generator
@@ -756,7 +756,7 @@ static std::random_device rd;
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getNumberOfColumns(); i++)
                             {
-                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < like.getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < like.getNumberOfRows(); j++)
                                 {
                                     ptr[j*like.getNumberOfColumns() + i] = nd(gen);
                                 } 
@@ -862,7 +862,7 @@ static std::random_device rd;
                                 ret = Numcy::zeros<E>(DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL});
                                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
                                 {
-                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfRows(); j++)
                                     {
                                         ret[i] = ret[i] + a[j*a.getShape().getNumberOfColumns() + i]*a[j*a.getShape().getNumberOfColumns() + i];
                                     }
@@ -881,9 +881,9 @@ static std::random_device rd;
                         {
                             try
                             {                                  
-                                ret = Numcy::zeros<E>(DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL});
+                                ret = Numcy::zeros<E>(DIMENSIONS{a.getShape().getNumberOfRows(), 1, NULL, NULL});
                                 
-                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                                 {
                                     for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                                     {
@@ -1023,7 +1023,7 @@ static std::random_device rd;
                 case AXIS_COLUMN: 
                 {                    
                     // Validate shapes for column-wise concatenation
-                    if (!(a.getShape().getN() == 0 || b.getShape().getN() == 0) && !(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == b.getShape().getDimensionsOfArray().getNumberOfInnerArrays()))
+                    if (!(a.getShape().getN() == 0 || b.getShape().getN() == 0) && !(a.getShape().getNumberOfRows() == b.getShape().getNumberOfRows()))
                     {
                         throw ala_exception("Numcy::concatenate() Error: Number of rows must match for column-wise \"AXIS_COLUMN\" concatenation.");
                     }
@@ -1077,7 +1077,7 @@ static std::random_device rd;
                     }
 
                     // Calculate the new shape
-                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() + b.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                    cc_tokenizer::string_character_traits<char>::size_type newRows = a.getShape().getNumberOfRows() + b.getShape().getNumberOfRows();
                     cc_tokenizer::string_character_traits<char>::size_type newColumns = a.getShape().getNumberOfColumns();
 
                     // Allocate memory for the concatenated array
@@ -1095,18 +1095,18 @@ static std::random_device rd;
                     }
 
                     // Fill the concatenated array
-                    for (int i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); ++i)
+                    for (int i = 0; i < a.getShape().getNumberOfRows(); ++i)
                     {
                         for (int j = 0; j < newColumns; ++j)
                         {
                             ptr[i * newColumns + j] = a[i * a.getShape().getNumberOfColumns() + j];
                         }
                     }
-                    for (int i = 0; i < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); ++i)
+                    for (int i = 0; i < b.getShape().getNumberOfRows(); ++i)
                     {
                         for (int j = 0; j < newColumns; ++j)
                         {
-                            ptr[(i + a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) * newColumns + j] = b[i * b.getShape().getNumberOfColumns() + j];
+                            ptr[(i + a.getShape().getNumberOfRows()) * newColumns + j] = b[i * b.getShape().getNumberOfColumns() + j];
                         }
                     }
 
@@ -1154,7 +1154,7 @@ static std::random_device rd;
                 case AXIS_COLUMN:
 
                     // Validation of Shapes
-                    if (a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() != b.getShape().getNumberOfColumns())
+                    if (a.getShape().getNumberOfRows() != b.getShape().getNumberOfColumns())
                     {                        
                         throw ala_exception("Error in Collective::concatenate(AXIS_COLUMNS): Unable to concatenate instances of Collective composite. The number of rows in the first instance does not match the number of columns in the second instance.");
                     }
@@ -1175,7 +1175,7 @@ static std::random_device rd;
                     }
 
                     // Concatenation Loop
-                    for (int i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)                    
+                    for (int i = 0; i < a.getShape().getNumberOfRows(); i++)                    
                     {                        
                         for (int j = 0; j < a.getShape().getNumberOfColumns(); j++)
                         {                            
@@ -1185,7 +1185,7 @@ static std::random_device rd;
                         ptr[i*a.getShape().getNumberOfColumns() + a.getShape().getNumberOfColumns() + i] = b[i];                        
                     }
 
-                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns() + 1, a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns() + 1, a.getShape().getNumberOfRows(), NULL, NULL}};
 
                 break;
             }
@@ -1198,7 +1198,7 @@ static std::random_device rd;
         {
             cc_tokenizer::allocator<char> alloc_obj;
 
-            struct Collective<E> ret =  Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E) * x.getShape().getN() /*x.shape.getN()*/  )), DIMENSIONS{/*x.shape.getNumberOfColumns()*/ x.getShape().getNumberOfColumns(), /*x.shape.getNumberOfRows().getNumberOfInnerArrays()*/ x.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            struct Collective<E> ret =  Collective<E>{reinterpret_cast<E*>(alloc_obj.allocate(sizeof(E) * x.getShape().getN() /*x.shape.getN()*/  )), DIMENSIONS{/*x.shape.getNumberOfColumns()*/ x.getShape().getNumberOfColumns(), /*x.shape.getNumberOfRows().getNumberOfInnerArrays()*/ x.getShape().getNumberOfRows(), NULL, NULL}};
 
             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN() /*x.shape.getN()*/; i++)
             {
@@ -1409,7 +1409,7 @@ static std::random_device rd;
         static Collective<E> matmul(Collective<E> a, Collective<E> b) throw (ala_exception)
         {
             // Validate input shapes
-            if (a.getShape().getNumberOfColumns() != b.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            if (a.getShape().getNumberOfColumns() != b.getShape().getNumberOfRows())
             {
                 throw ala_exception("Numcy::matmul() Error: Incompatible shapes for matrix product of inputs.\nEither the last dimension of the first matrix must match the second-to-last dimension of the second matrix,\nor both are scalars.");
             }
@@ -1437,7 +1437,7 @@ static std::random_device rd;
 
                 try
                 {                
-                    ptr = cc_tokenizer::allocator<E>().allocate(b.getShape().getNumberOfColumns()*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+                    ptr = cc_tokenizer::allocator<E>().allocate(b.getShape().getNumberOfColumns()*a.getShape().getNumberOfRows());
                 }
                 catch (const std::bad_alloc& e)
                 {
@@ -1449,16 +1449,16 @@ static std::random_device rd;
                 }
                   
                 // Initialize result matrix to zero
-                memset(ptr, 0, sizeof(E)*(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() * /*b.shape.getNumberOfColumns()*/ b.getShape().getNumberOfColumns()));
+                memset(ptr, 0, sizeof(E)*(a.getShape().getNumberOfRows() * /*b.shape.getNumberOfColumns()*/ b.getShape().getNumberOfColumns()));
                 
                 // Perform matrix multiplication
                 try                 
                 {   
-                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                     {
                         for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < b.getShape().getNumberOfColumns(); j++)
                         {
-                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); k++)
+                            for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < b.getShape().getNumberOfRows(); k++)
                             {                                                            
                                 ptr[i*b.getShape().getNumberOfColumns() + j] =  ptr[i*b.getShape().getNumberOfColumns() + j] + a[i*a.getShape().getNumberOfColumns() + k] * b[k*b.getShape().getNumberOfColumns() + j];
                             }
@@ -1472,7 +1472,7 @@ static std::random_device rd;
                 }
                 
                 // Wrap result in a Collective object
-                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.getShape().getNumberOfColumns(), a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+                struct Collective<E> ret = Collective<E>{ptr, DIMENSIONS{b.getShape().getNumberOfColumns(), a.getShape().getNumberOfRows(), NULL, NULL}};
                 
                 return ret;
             };
@@ -1777,9 +1777,9 @@ static std::random_device rd;
                 break;
                 case AXIS_ROWS:
                 {  
-                    if (!(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays() == mean.getShape().getNumberOfColumns()))
+                    if (!(a.getShape().getNumberOfRows() == mean.getShape().getNumberOfColumns()))
                     {
-                        cc_tokenizer::String<char> message = cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) Error: Dimension mismatch. The number of rows in the input array ") + cc_tokenizer::String<char>(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>(" does not match the number of columns in the mean array ") + cc_tokenizer::String<char>(mean.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>(". Ensure the mean array is computed correctly for AXIS_ROWS.");
+                        cc_tokenizer::String<char> message = cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) Error: Dimension mismatch. The number of rows in the input array ") + cc_tokenizer::String<char>(a.getShape().getNumberOfRows()) + cc_tokenizer::String<char>(" does not match the number of columns in the mean array ") + cc_tokenizer::String<char>(mean.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>(". Ensure the mean array is computed correctly for AXIS_ROWS.");
 
                         throw ala_exception(message);
                     }
@@ -1790,7 +1790,7 @@ static std::random_device rd;
 
                         memset(ptr, 0, sizeof(E)*mean.getShape().getN());
 
-                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                             {                                
@@ -1813,7 +1813,7 @@ static std::random_device rd;
                         throw ala_exception(cc_tokenizer::String<char>("Numcy::variance(AXIS_ROWS) -> ") + cc_tokenizer::String<char>(e.what()));
                     }
 
-                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL}};
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfRows(), 1, NULL, NULL}};
                 }
                 break;
                 case AXIS_COLUMN:
@@ -1833,12 +1833,12 @@ static std::random_device rd;
 
                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < mean.getShape().getN(); i++)
                         {
-                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfRows(); j++)
                             {
                                 ptr[i] = ptr[i] + (a[j*a.getShape().getNumberOfColumns() + i] - mean[i])*(a[j*a.getShape().getNumberOfColumns() + i] - mean[i]);                            
                             }
 
-                            ptr[i] = ptr[i] / a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                            ptr[i] = ptr[i] / a.getShape().getNumberOfRows();
                         }
                     }
                     catch (std::bad_alloc& e)
@@ -1943,12 +1943,12 @@ static std::random_device rd;
 
                         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
                         {
-                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); j++)
+                            for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfRows(); j++)
                             {
                                 ptr[i] = ptr[i] + a[j*a.getShape().getNumberOfColumns() + i];
                             }
 
-                            ptr[i] = ptr[i] / a.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                            ptr[i] = ptr[i] / a.getShape().getNumberOfRows();
                         }
                     }
                     catch (std::bad_alloc& e)
@@ -1971,11 +1971,11 @@ static std::random_device rd;
                 {
                     try
                     {
-                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfRows());
 
-                        memset(ptr, 0, sizeof(E)*a.getShape().getDimensionsOfArray().getNumberOfInnerArrays());
+                        memset(ptr, 0, sizeof(E)*a.getShape().getNumberOfRows());
 
-                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                        for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                         {
                             for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                             {
@@ -1998,7 +1998,7 @@ static std::random_device rd;
                         throw ala_exception(cc_tokenizer::String<char>("Numcy::mean(AXIS_ROWS) -> ") + cc_tokenizer::String<char>(e.what()));
                     }
 
-                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), 1, NULL, NULL}}; 
+                    ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfRows(), 1, NULL, NULL}}; 
                 }
                 break;                
             }
@@ -2079,7 +2079,7 @@ static std::random_device rd;
                                 If a has only one inner array, then return that inner array as it is.
                                 On the other hand if a has few or many inner arrays then take the column wise mean of all inner arrays.
                              */   
-                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+                            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
                             {
                                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
                                 {
@@ -2089,7 +2089,7 @@ static std::random_device rd;
 
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
                             {
-                                ptr[i] = ptr[i] / like.getShape().getDimensionsOfArray().getNumberOfInnerArrays();
+                                ptr[i] = ptr[i] / like.getShape().getNumberOfRows();
                             }
 
                             ret = Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
@@ -2153,7 +2153,7 @@ static std::random_device rd;
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::ones() -> ") + cc_tokenizer::String<char>(e.what()));
             }
                                                        
-            return Collective<E>{ptr, DIMENSIONS{dim.getNumberOfColumns() , dim.getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            return Collective<E>{ptr, DIMENSIONS{dim.getNumberOfColumns() , dim.getNumberOfRows(), NULL, NULL}};
         }
 
         /*  
@@ -2315,10 +2315,10 @@ static std::random_device rd;
         template<typename E = double>
         static struct Collective<E> reshape(Collective<E>& m1, Collective<E>& m2) throw (ala_exception)
         {
-            if (!((m1.getShape().getNumberOfColumns() <= m2.getShape().getNumberOfColumns()) && (m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays() <= m2.getShape().getDimensionsOfArray().getNumberOfInnerArrays())))
+            if (!((m1.getShape().getNumberOfColumns() <= m2.getShape().getNumberOfColumns()) && (m1.getShape().getNumberOfRows() <= m2.getShape().getNumberOfRows())))
             {
                 cc_tokenizer::String<char> message1("Numcy::reshape() Error: Reshape operation failed. Incompatible dimensions. For reshape to be successful, Matrix 1 must have: - Less than or equal columns compared to Matrix 2. - Less than or equal inner arrays compared to Matrix 2. ");
-                cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("m1(") + cc_tokenizer::String<char>(m1.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>("r) ") + cc_tokenizer::String<char>("m2(") + cc_tokenizer::String<char>(m2.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m2.getShape().getDimensionsOfArray().getNumberOfInnerArrays()) + cc_tokenizer::String<char>("r)");
+                cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("m1(") + cc_tokenizer::String<char>(m1.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m1.getShape().getNumberOfRows()) + cc_tokenizer::String<char>("r) ") + cc_tokenizer::String<char>("m2(") + cc_tokenizer::String<char>(m2.getShape().getNumberOfColumns()) + cc_tokenizer::String<char>("c,") + cc_tokenizer::String<char>(m2.getShape().getNumberOfRows()) + cc_tokenizer::String<char>("r)");
 
                 throw ala_exception(message1 + message2);
             }
@@ -2340,7 +2340,7 @@ static std::random_device rd;
                 ptr[i] = 0.0;
             }*/
             
-            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); i++)
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < m1.getShape().getNumberOfRows(); i++)
             {
                 for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < m1.getShape().getNumberOfColumns(); j++)
                 {
@@ -2880,22 +2880,22 @@ static std::random_device rd;
 
             try 
             {
-                ptr = cc_tokenizer::allocator<E>().allocate(m.getShape().getNumberOfColumns()*m.getShape().getDimensionsOfArray().getNumberOfInnerArrays());                
+                ptr = cc_tokenizer::allocator<E>().allocate(m.getShape().getNumberOfColumns()*m.getShape().getNumberOfRows());                
             }
             catch (std::bad_alloc& e)
             {
                 throw ala_exception(cc_tokenizer::String<char>("Numcy::transpose() Error: ") + cc_tokenizer::String<char>(e.what()));
             } 
 
-            for (cc_tokenizer::String<char>::size_type row = 0; row < m.getShape().getDimensionsOfArray().getNumberOfInnerArrays(); row++)
+            for (cc_tokenizer::String<char>::size_type row = 0; row < m.getShape().getNumberOfRows(); row++)
             {
                 for (cc_tokenizer::String<char>::size_type column = 0; column < m.getShape().getNumberOfColumns(); column++)
                 {
-                    ptr[column*m.getShape().getDimensionsOfArray().getNumberOfInnerArrays() + row] =  m[row*m.getShape().getNumberOfColumns() + column];
+                    ptr[column*m.getShape().getNumberOfRows() + row] =  m[row*m.getShape().getNumberOfColumns() + column];
                 }
             }
 
-            return Collective<E>{ptr, DIMENSIONS{m.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), m.getShape().getNumberOfColumns(), NULL, NULL}};
+            return Collective<E>{ptr, DIMENSIONS{m.getShape().getNumberOfRows(), m.getShape().getNumberOfColumns(), NULL, NULL}};
         }
 
         /*
@@ -2923,7 +2923,7 @@ static std::random_device rd;
         template<typename E>
         static Collective<E> triu(Collective<E>& m, int k = 0, bool verbose = false) throw (ala_exception)
         {             
-            if (!m.getShape().getN() || !m.getShape().getDimensionsOfArray().getNumberOfInnerArrays())
+            if (!m.getShape().getN() || !m.getShape().getNumberOfRows())
             {
                 throw ala_exception("Numcy::triu() Error: Dimensional data is empty. Unable to proceed.");
             }
@@ -2978,7 +2978,7 @@ static std::random_device rd;
                 }
             }
 
-            return Collective<E>{ptr, DIMENSIONS{m.getShape().getNumberOfColumns(), m.getShape().getDimensionsOfArray().getNumberOfInnerArrays(), NULL, NULL}};
+            return Collective<E>{ptr, DIMENSIONS{m.getShape().getNumberOfColumns(), m.getShape().getNumberOfRows(), NULL, NULL}};
         }
                                                                 
         /*            
