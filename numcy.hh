@@ -372,9 +372,54 @@ class Numcy
 
                             Throws:
                             - ala_exception: If any error occurs during the calculation.
-                         */
+                         */                        
                         template <typename E = double>
                         static E cosine(Collective<E>& u, Collective<E>& v) throw (ala_exception)
+                        {
+                            try 
+                            {
+                                /*
+                                    It computes the dot product of the vectors using Numcy::dot(u, v) and 
+                                    stores the result in a Collective<E> named product
+                                 */
+                                /*Collective<E> product = Numcy::dot(u, v);*/
+
+                                /*product = Numcy::sum(product);*/
+
+                                //product[0] = std::sqrt(product[0]);
+
+                                //std::cout<< product.getShape().getNumberOfColumns() << product.getShape().getNumberOfRows() << std::endl;
+
+                                E u_enorm = Numcy::enorm(u);
+                                E v_enorm = Numcy::enorm(v);
+
+                                //u_enorm = std::sqrt(u_enorm);
+                                //v_enorm = std::sqrt(v_enorm);
+
+                                //for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < u_enorm.getShape().getN(); i++)
+                                //{
+                                    Collective<E> uu = u/u_enorm;
+                                    Collective<E> vv = v/v_enorm;
+                                //}
+
+                                //return product;
+
+                                Collective<E> product = Numcy::dot(uu, vv);
+
+                                product = Numcy::sum(product);
+
+                                return product[0];
+
+                                /*return (product[0]/(uu*vv));*/
+                            }
+                            catch (ala_exception& e)
+                            {
+                                throw ala_exception(cc_tokenizer::String<char>("Numcy::cosine() -> ") + e.what());
+                            }
+                        }
+                         
+                        template <typename E = double>
+                        static E cosine_old(Collective<E>& u, Collective<E>& v) throw (ala_exception)
                         {
                             try 
                             {

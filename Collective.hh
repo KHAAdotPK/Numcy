@@ -2022,7 +2022,7 @@ struct Collective
                     
                     for (cc_tokenizer::string_character_traits<E>::size_type j = 0; j < dim.getN(); j++)
                     {
-                        slice_ptr[j] = (*this)[i + 1] /*ptr[i + j]*/;
+                        slice_ptr[j] = (*this)[i + j];
                     }                    
 
                     ret = Collective<E>{slice_ptr, /**(dim.copy())*/ dim};
