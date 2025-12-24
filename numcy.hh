@@ -86,6 +86,7 @@ class Numcy
                      */             
                     if (!(b.getShape().getN() == 1))
                     {  
+                        std::cout<< "---- Columns, Rows" << std::endl;
                         std::cout<< "a = " << a.getShape().getNumberOfColumns() << ", " << a.getShape().getNumberOfRows() << std::endl;
                         std::cout<< "b = " << b.getShape().getNumberOfColumns() << ", " << b.getShape().getNumberOfRows() << std::endl;
                         throw ala_exception("Numcy::dot() Error: Incompatible shapes for dot product. Both matrices must have the same shape for element-wise multiplication, or the number of columns in the first matrix must match the number of rows in the second matrix. Alternatively, the second matrix must be a scalar (1x1).");

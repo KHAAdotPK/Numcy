@@ -2060,14 +2060,36 @@ struct Collective
                     throw ala_exception("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) Error: The slice range exceeds the bounds of the available data for \"AXIS_ROWS\".");    
                 }
 
-                slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
-
-                for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < dim.getNumberOfRows(); j++)
+                try 
                 {
-                    for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < dim.getNumberOfColumns(); k++)
+
+                    slice_ptr = cc_tokenizer::allocator<E>().allocate(dim.getN());
+
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < dim.getNumberOfRows(); j++)
                     {
-                        slice_ptr[j*dim.getNumberOfColumns() + k] = (*this)[j*this->getShape().getNumberOfColumns() + i + k];
+                        for (cc_tokenizer::string_character_traits<char>::size_type k = 0; k < dim.getNumberOfColumns(); k++)
+                        {
+                            slice_ptr[j*dim.getNumberOfColumns() + k] = (*this)[j*this->getShape().getNumberOfColumns() + i + k];
+                        }
                     }
+                }
+                catch (std::length_error& e)
+                {
+                    // CRITICAL: Memory allocation failure - system should terminate immediately
+                    // NO cleanup performed - this is a fatal error requiring process exit
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) -> ") + e.what());
+                }
+                catch (std::bad_alloc& e)
+                {
+                    // CRITICAL: Length constraint violation - system should terminate immediately
+                    // NO cleanup performed - this is a fatal error requiring process exit
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) -> ") + e.what());
+                }
+                catch (ala_exception& e)
+                {
+                    // Propagate existing ala_exception with additional context
+                    // NO cleanup performed assuming this is also a critical error
+                    throw ala_exception(cc_tokenizer::String<char>("Collective::slice(cc_tokenizer::string_character_traits<char>::size_type, DIMENSIONS&, AXIS) -> ") + e.what());
                 }
 
                 ret = Collective<E>{slice_ptr, dim};
