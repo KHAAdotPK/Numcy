@@ -563,6 +563,9 @@ struct Collective
 
             //std::cout<< "RESHAPE = " << dim.getNumberOfLinks() << std::endl;
  
+            /*
+                Decrement, Increment is taken care by this method call
+             */
             this->properties->shape->reShape(dim);
 
             /*std::cout<< " 2 In Collective: " << this->properties->shape->getReferenceCounts()[0] << std::endl;*/
@@ -2276,6 +2279,25 @@ struct Collective
         
         //return slice_ptr;
         return ret;
+    }
+
+    /*
+        This is not tested yet
+     */
+    void update_shape(DIMENSIONSOFARRAY& new_shape) throw (ala_exception)
+    {
+        try
+        {
+            std::cout<< "new_shape = " << new_shape.size() << std::endl;
+
+            std::cout<< new_shape[0] << ", " << new_shape[1] << ", " << new_shape[2] << std::endl;
+                        
+            this->getShape().reShape(new_shape);
+        }
+        catch(ala_exception& e)
+        {
+            throw ala_exception(cc_tokenizer::String<char>("Collective<E>::update_shape(DIMENSIONSOFARRAY&) -> ") + e.what());
+        }
     }
     
     /*

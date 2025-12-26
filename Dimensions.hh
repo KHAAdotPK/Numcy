@@ -1286,9 +1286,35 @@ typedef struct Dimensions
         return NULL;
      }
 
+     /*
+        It is not fully tested yet
+      */
+     void reShape(DIMENSIONSOFARRAY& dimensionsOfArray) throw (ala_exception)
+     {
+        try 
+        {
+            DIMENSIONS like = DIMENSIONS(dimensionsOfArray);
+
+            /*std::cout<< "like.dimensionsOfArray = " << like.getDimensionsOfArray().size() << std::endl;
+
+            std::cout<< like.getDimensionsOfArray()[0] << ", " << like.getDimensionsOfArray()[1] << ", " << like.getDimensionsOfArray()[2] << std::endl;*/
+            
+            this->reShape(like);
+        }
+        catch (ala_exception& e)
+        {
+            // Propagate existing ala_exception with additional context
+            // NO cleanup performed assuming this is also a critical error
+            throw ala_exception(cc_tokenizer::String<char>("DIMENSIONS::reShape(DIMENSIONSOFARRAY&) -> ") + e.what());
+        }
+     }
+
      void reShape(Dimensions& like) throw (ala_exception)
      { 
          this->decrementReferenceCount();
+
+        /*std::cout<< "--> like.dimensionsOfArray = " << like.getDimensionsOfArray().size() << std::endl;
+        std::cout<< like.getDimensionsOfArray()[0] << ", " << like.getDimensionsOfArray()[1] << ", " << like.getDimensionsOfArray()[2] << std::endl;*/
 
          try
          {
@@ -1297,6 +1323,8 @@ typedef struct Dimensions
              this->properties->rows = like.getDimensionsOfArray()[0]; 
              this->properties->columns = 0;    
              
+             /*std::cout<< "LINKS = " << like.getNumberOfLinks() << std::endl;*/
+
              if (like.getNumberOfLinks() == 1) 
              {
                 this->properties->columns = like.getDimensionsOfArray()[1];
@@ -1307,7 +1335,9 @@ typedef struct Dimensions
              this->properties->next = like.getNext();
              this->properties->prev = like.getPrev();
 
-             this->incrementReferenceCount();             
+             this->incrementReferenceCount(); 
+             
+             /*std::cout<< "DAGNY = " <<  this->getDimensionsOfArray().size() << std::endl;*/
          }
          catch (std::bad_alloc& e)
          {
