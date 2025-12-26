@@ -1025,6 +1025,7 @@ static std::random_device rd;
             return /*(OutType*)*/ ptr;            
         }
 
+        /* TODO, This function needs lot of testing an work consider it broken */
         /**
          * @brief Concatenates two instances of the `Collective` class along a specified axis.
          *
@@ -1062,7 +1063,7 @@ static std::random_device rd;
         static Collective<E> concatenate(Collective<E>& a, Collective<E>& b, AXIS axis = AXIS_COLUMN)
         {
             E* ptr = nullptr;
-            Collective<E> ret = Collective<E>{nullptr, DIMENSIONS{0, 0, nullptr, nullptr}};
+            Collective<E> ret /*= Collective<E>{nullptr, DIMENSIONS{0, 0, nullptr, nullptr}}*/;
 
             switch (axis)
             {
@@ -1110,8 +1111,14 @@ static std::random_device rd;
                         }
                     }
                     
+                    DIMENSIONSOFARRAY dimensionsOfArray = b.getShape().getDimensionsOfArray();
+
+                    dimensionsOfArray[dimensionsOfArray.size() - 1] = newColumns;
+
+                    DIMENSIONS dims = DIMENSIONS(dimensionsOfArray);
+
                     // Set the result shape
-                    ret = Collective<E>{ptr,  DIMENSIONS{newColumns, newRows, nullptr, nullptr}};                                        
+                    ret = Collective<E>{ptr,  /*DIMENSIONS{newColumns, newRows, nullptr, nullptr}*/ /*a.getShape()*/ dims};                                        
                     break;
                 }
                 case AXIS_ROWS:
