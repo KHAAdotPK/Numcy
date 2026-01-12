@@ -552,6 +552,104 @@ class Numcy
                 }
 
                 /*
+                    https://share.google/aimode/IHTAthVwdA9sfYtqp
+                    https://share.google/aimode/YP6k2P0TqDXKiueF7
+                    https://share.google/aimode/ceOLzdKbOgZiOBxcr
+                 */
+                template <typename E = double> 
+                static Collective<E> randn_word2vec(DIMENSIONS& like, AXIS axis = AXIS_NONE) throw (ala_exception) 
+                {
+                    cc_tokenizer::string_character_traits<char>::size_type num_weights = like.getN();
+                    
+                    if (!num_weights)
+                    {
+                        throw ala_exception("Numcy::Random::randn_word2vec(DIMENSIONS&, AXIS) Error: Shape of the array must not be zero.");
+                    }
+
+                    E* ptr = NULL;
+                    Collective<E> ret;
+
+                    // 1. Setup Random Number Generator
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+
+                    // 2. Define the range [-0.5/dim, 0.5/dim]
+                    // For dim=50, this is [-0.01, 0.01]
+                    E limit;
+
+                    switch (axis)
+                    {
+                        case AXIS_NONE:
+                        case AXIS_COLUMN:
+                            limit = 0.5f / like.getNumberOfColumns();
+                        break;
+
+                        case AXIS_ROWS:
+                            limit = 0.5f / like.getNumberOfRows();
+                        break;
+                    }
+
+                    std::uniform_real_distribution<float> dis(-limit, limit);
+
+                    // 3. Initialize
+                    try
+                    {
+                        ptr = cc_tokenizer::allocator<E>().allocate(num_weights);
+                        ret = Collective<E>{ptr, like};
+
+                        switch (axis)
+                        {
+                            case AXIS_NONE:
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
+                                {
+                                    ret[i] = dis(rd);
+                                }
+                            break;
+
+                            case AXIS_COLUMN:                               
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getNumberOfRows(); i++)
+                                {
+                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < like.getNumberOfColumns(); j++)
+                                    {
+                                        ret[i*like.getNumberOfColumns() + j] = dis(rd);
+                                    }
+                                } 
+                            break;
+
+                            case AXIS_ROWS:
+                                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < like.getNumberOfRows(); i++)
+                                {
+                                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < like.getNumberOfColumns(); j++)
+                                    {
+                                        ret[j*like.getNumberOfColumns() + i] = dis(rd);
+                                    }
+                                }
+                            break;
+                        }
+                    } 
+                    catch (std::length_error& e)
+                    {
+                        // CRITICAL: Memory allocation failure - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_word2vec(DIMENSIONS&, AXIS) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (std::bad_alloc& e)
+                    {
+                        // CRITICAL: Length constraint violation - system should terminate immediately
+                        // NO cleanup performed - this is a fatal error requiring process exit
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_word2vec(DIMENSIONS&, AXIS) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    catch (ala_exception& e)
+                    {
+                        // Propagate existing ala_exception with additional context
+                        // NO cleanup performed assuming this is also a critical error
+                        throw ala_exception(cc_tokenizer::String<char>("Numcy::Random::randn_word2vec(DIMENSIONS&, AXIS) -> ") + cc_tokenizer::String<char>(e.what()));
+                    }
+                    
+                    return ret /*Collective<E>{ptr, like}*/;
+                }
+
+                /*
                     The current weight initialization uses a random Gaussian distribution via Numcy::Random::randn<t>.
                     While this is a valid approach, it’s often a good idea to use more sophisticated initialization techniques like Xavier (Glorot) or He initialization to ensure better convergence during training, especially for deep networks.
 
