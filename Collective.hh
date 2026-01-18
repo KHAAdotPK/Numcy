@@ -146,6 +146,7 @@ struct Collective
 {
     private:
         E* ptr;
+        FILE* fptr; 
                            
         //DIMENSIONS shape;
 
@@ -164,7 +165,9 @@ struct Collective
     public:
         // Default constructor
         Collective (void) throw (ala_exception)
-        {             
+        {  
+            fptr = NULL;
+
             try
             {
                 this->properties = new CollectiveProperties<E>();
@@ -210,6 +213,8 @@ struct Collective
          */        
         Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {   
+            fptr = NULL;
+
             try 
             {
                 if (like.getN() > 0)
@@ -415,6 +420,8 @@ struct Collective
         */
         Collective (E *v, DIMENSIONS_PTR like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         { 
+            fptr = NULL;
+            
             try 
             {
                 if (like.getN() > 0)
@@ -497,6 +504,7 @@ struct Collective
 
         Collective (const Collective<E>& other) throw (ala_exception)
         {   
+            fptr = NULL;
             //std::cout<< "IN COPY CONSTRUCTOR OF COLLECTIVE " << other.properties << ", " << other.getShape().getN() << std::endl;
 
             try 
@@ -2359,6 +2367,123 @@ struct Collective
             // Re-throw the exception with additional context about the calling function        
             throw ala_exception(cc_tokenizer::String<char>("Collective<E>::update_column(cc_tokenizer::string_character_traits<char>::size_type, const Collective<E>&) -> ") + e.what());
         }        
+    }
+
+    /**
+     * @brief Writes the Collective object's data to a file.
+     * 
+     * This method serializes the internal data array to a binary file. The file is opened
+     * in write-binary mode ("wb"). If the file pointer (fptr) is already open from a previous
+     * operation, it will be reused, allowing for multiple writes to the same file.
+     * 
+     * @tparam E The element type of the data array (must be trivially copyable for fwrite).
+     * @param fname Reference to a String object containing the filename/path.
+     * @param flag If true, the file will be closed after writing; if false, the file 
+     *             remains open for subsequent write operations (default: false).
+     * 
+     * @throws ala_exception in the following cases:
+     *           1. If the file cannot be opened for writing (permissions, path issues, etc.)
+     *           2. If the fwrite operation fails to write all expected elements
+     *           3. If any underlying memory allocation fails (e.g., in exception message creation)
+     * 
+     * @note The method uses the existing fptr member variable to maintain file state
+     *       between calls. Call close() explicitly if flag=false to avoid resource leaks.
+     * @note The data is written in raw binary format with no headers or metadata.
+     *       The reading code must know the exact data format and size.
+     * @note This method is not thread-safe. Concurrent calls to write() or close()
+     *       on the same object require external synchronization.
+     * 
+     * @see close()
+     * @see getShape()
+     * @see cc_tokenizer::String
+     * @see ala_exception
+     * 
+     * @example
+     *   Collective<float> data;
+     *   // ... fill data ...
+     *   try {
+     *     data.write("output.bin", true); // Write and close
+     *   } catch (const ala_exception& e) {
+     *     // Handle error
+     *   }
+     */ 
+    void write (cc_tokenizer::String<char>& fname, bool flag = false) throw (ala_exception)
+    {
+        if (fptr == NULL)
+        {
+            fptr = fopen(fname.c_str(), "wb");
+        }
+
+        if (fptr == NULL)
+        {
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&) Error: Could not open file \"");
+            cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\" for writing.");
+
+            throw ala_exception(message1 + fname + message2);
+        }
+
+        size_t written_count = fwrite(this->properties->ptr, sizeof(E), this->getShape().getN(), fptr);  
+
+        if (written_count != this->getShape().getN())
+        {
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&) Error: Could not write to file \"");
+            cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\" for writing.");
+                        
+            fclose(fptr);
+
+            fptr = NULL;
+
+            throw ala_exception(message1 + fname + message2);
+        }
+
+        if (flag)
+        {
+            fclose (fptr);
+
+            fptr = NULL;
+        }
+    }
+
+    /**
+     * @brief Safely closes the file if it's currently open.
+     * 
+     * This method ensures that the file stream (fptr) is properly closed and the
+     * internal file pointer is reset to NULL. It's idempotent - calling close() multiple
+     * times or when no file is open has no adverse effects.
+     * 
+     * @warning Not calling close() when finished with file operations may cause:
+     *          - Resource leaks (file handles)
+     *          - Data loss if buffers aren't flushed
+     *          - Inability to reopen the file (on some systems)
+     * 
+     * @post fptr == NULL (guaranteed if no exceptions are thrown)
+     * 
+     * @throws No exceptions. This method provides the strong exception safety guarantee.
+     * 
+     * @see write()
+     * 
+     * @example
+     *   Collective<int> data;
+     *   data.write(filename, false); // Keep file open
+     *   // ... more operations ...
+     *   data.close(); // Explicitly close when done
+     * 
+     * @example Error handling:
+     *   try {
+     *     data.write(filename, false);
+     *   } catch (...) {
+     *     data.close(); // Clean up even on error
+     *     throw;
+     *   }
+     */
+    void close (void) 
+    {
+        if (fptr != NULL)
+        {
+            fclose (fptr);
+
+            fptr = NULL;
+        }
     }
 };
 #endif
