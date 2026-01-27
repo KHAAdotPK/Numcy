@@ -739,7 +739,7 @@ class Numcy
                   *               - input_size is derived as the number of inner arrays (rows): 50
                   *               - output_size is derived as the number of columns: 60
                   * @param normal_or_uniformreal_distribution If true, initializes using a normal (Gaussian) distribution.
-                  *                                           If false, throws an exception (uniform distribution not implemented here).
+                  *                                           If false, initializes using a uniform distribution.
                   *
                   * @return A Collective<E> object containing the initialized weight array.
                   *
@@ -791,7 +791,7 @@ class Numcy
                                 ptr[i] = dist(gen);
                             }
                         }
-                        else // Uniform distribution (not implemented in this function)
+                        else 
                         {
                             std::uniform_real_distribution<E> dist(-limit, limit);
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
@@ -826,11 +826,12 @@ class Numcy
                 /*
                     TODO,
                     Make it variadic function
+                    The number generators are all messed up make them better
 
                     Generates random numbers following a normal distribution with a specified mean and standard deviation, and it returns an object of type Collective<E>. 
                  */
 		        template <typename E = double>
-                static Collective<E> randn(DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type seed = 0, AXIS axis = AXIS_NONE) throw (ala_exception)
+                static Collective<E> randn(DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type seed = 0, AXIS axis = AXIS_NONE, bool normal_or_uniformreal_distribution = true) throw (ala_exception)
                 {   
                     cc_tokenizer::string_character_traits<char>::size_type n = like.getN();
                     

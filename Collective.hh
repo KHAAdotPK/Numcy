@@ -146,7 +146,7 @@ struct Collective
 {
     private:
         E* ptr;
-        FILE* fptr; 
+        FILE *fptr_write, *fptr_read; 
                            
         //DIMENSIONS shape;
 
@@ -166,7 +166,8 @@ struct Collective
         // Default constructor
         Collective (void) throw (ala_exception)
         {  
-            fptr = NULL;
+            fptr_write = NULL;
+            fptr_read = NULL;
 
             try
             {
@@ -213,7 +214,8 @@ struct Collective
          */        
         Collective (E* v, DIMENSIONS& like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         {   
-            fptr = NULL;
+            fptr_write = NULL;
+            fptr_read = NULL;
 
             try 
             {
@@ -420,8 +422,8 @@ struct Collective
         */
         Collective (E *v, DIMENSIONS_PTR like, cc_tokenizer::string_character_traits<char>::size_type rc = NUMCY_DEFAULT_REFERENCE_COUNT) throw (ala_exception)
         { 
-            fptr = NULL;
-            
+            fptr_write = NULL;
+            fptr_read = NULL;
             try 
             {
                 if (like.getN() > 0)
@@ -504,7 +506,9 @@ struct Collective
 
         Collective (const Collective<E>& other) throw (ala_exception)
         {   
-            fptr = NULL;
+            fptr_write = NULL;
+            fptr_read = NULL;
+
             //std::cout<< "IN COPY CONSTRUCTOR OF COLLECTIVE " << other.properties << ", " << other.getShape().getN() << std::endl;
 
             try 
@@ -2409,14 +2413,14 @@ struct Collective
      */ 
     void write (cc_tokenizer::String<char>& fname, bool flag = false) throw (ala_exception)
     {
-        if (fptr == NULL)
+        if (fptr_write == NULL)
         {
-            fptr = fopen(fname.c_str(), "wb");
+            fptr_write = fopen(fname.c_str(), "wb");
         }
 
-        if (fptr == NULL)
+        if (fptr_write == NULL)
         {
-            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&) Error: Could not open file \"");
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&, bool) Error: Could not open file \"");
             cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\" for writing.");
 
             throw ala_exception(message1 + fname + message2);
@@ -2426,21 +2430,58 @@ struct Collective
 
         if (written_count != this->getShape().getN())
         {
-            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&) Error: Could not write to file \"");
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&, bool) Error: Could not write to file \"");
             cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\" for writing.");
                         
-            fclose(fptr);
+            fclose(fptr_write);
 
-            fptr = NULL;
+            fptr_write = NULL;
 
             throw ala_exception(message1 + fname + message2);
         }
 
         if (flag)
         {
-            fclose (fptr);
+            fclose (fptr_write);
 
-            fptr = NULL;
+            fptr_write = NULL;
+        }
+    }
+
+    void read (cc_tokenizer::String<char>& fname, bool flag = false) throw (ala_exception)
+    {
+        if (fptr_read == NULL)
+        {
+            fptr_read = fopen(fname.c_str(), "rb");
+        }
+
+        if (fptr_read == NULL)
+        {
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::read(cc_tokenizer::String<char>&, bool) Error: Could not open file \"");
+            cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\" for reading.");
+
+            throw ala_exception(message1 + fname + message2);
+        }
+
+        size_t read_count = fread(this->properties->ptr, sizeof(E), this->getShape().getN(), fptr_read);
+
+        if (read_count != this->getShape().getN())
+        {
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&, bool) Error: Could not read from the file \"");
+            cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\".");
+                        
+            fclose(fptr_read);
+
+            fptr_read = NULL;
+
+            throw ala_exception(message1 + fname + message2);
+        }
+
+        if (flag)
+        {
+            fclose (fptr_read);
+
+            fptr_read = NULL;
         }
     }
 
@@ -2478,11 +2519,31 @@ struct Collective
      */
     void close (void) 
     {
-        if (fptr != NULL)
+        if (fptr_write != NULL)
         {
-            fclose (fptr);
+            fclose (fptr_write);
 
-            fptr = NULL;
+            fptr_write = NULL;
+        }
+    }
+
+    void close_write (void) 
+    {
+        if (fptr_write != NULL)
+        {
+            fclose (fptr_write);
+
+            fptr_write = NULL;
+        }
+    }
+
+    void close_read (void) 
+    {
+        if (fptr_read != NULL)
+        {
+            fclose (fptr_read);
+
+            fptr_read = NULL;
         }
     }
 };
