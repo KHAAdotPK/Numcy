@@ -738,8 +738,8 @@ class Numcy
                   *             Internally:
                   *               - input_size is derived as the number of inner arrays (rows): 50
                   *               - output_size is derived as the number of columns: 60
-                  * @param normal_or_uniformreal_distribution If true, initializes using a normal (Gaussian) distribution.
-                  *                                           If false, initializes using a uniform distribution.
+                  * @param normal_or_uniform_real_distribution If true, initializes using a normal (Gaussian) distribution.
+                  *                                            If false, initializes using a uniform distribution.
                   *
                   * @return A Collective<E> object containing the initialized weight array.
                   *
@@ -751,7 +751,7 @@ class Numcy
                   *   In both cases, num_weights = input_size * output_size
                   */                
                 template <typename E = double>                
-                static Collective<E> randn_xavier(DIMENSIONS like, bool normal_or_uniformreal_distribution = true) throw (ala_exception)
+                static Collective<E> randn_xavier(DIMENSIONS like, bool normal_or_uniform_real_distribution = true) throw (ala_exception)
                 {
                     cc_tokenizer::string_character_traits<char>::size_type num_weights = like.getN();
                     
@@ -777,13 +777,13 @@ class Numcy
                     // Uniform in range [-limit, +limit] where limit = sqrt(6 / (input_size + output_size))
                     E limit = std::sqrt(6.0 / (input_size + output_size));
 
-                    E* ptr = nullptr;
+                    E* ptr = NULL;
 
                     try 
                     {
                         ptr = cc_tokenizer::allocator<E>().allocate(num_weights);
 
-                        if (normal_or_uniformreal_distribution) // Normal distribution
+                        if (normal_or_uniform_real_distribution) // Normal distribution
                         {
                             std::normal_distribution<E> dist(mean, stddev /* xavier_std */);
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
@@ -791,14 +791,13 @@ class Numcy
                                 ptr[i] = dist(gen);
                             }
                         }
-                        else 
+                        else // Uniform distribution
                         {
                             std::uniform_real_distribution<E> dist(-limit, limit);
                             for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < num_weights; i++)
                             {
                                 ptr[i] = dist(gen);
                             }
-                            //throw ala_exception("Uniform distribution not implemented in this function.");
                         }
                     }
                     catch (std::length_error& e)
@@ -2979,6 +2978,31 @@ static std::random_device rd;
             return Collective<E>{ptr, /**(dim.copy())*/ dim};
         } 
 
+        /**
+         * @brief Performs a sum reduction over a Collective (ND-array) based on the specified axis.
+         * * This method calculates the sum of elements in the array. It supports global 
+         * summation, row-wise summation, and column-wise summation.
+         * * @section Axis Behavior & NumPy Comparison:
+         * - AXIS_NONE:   Sums every element in the array. Returns a 1x1 Collective.
+         * Matches NumPy's `np.sum(a, axis=None)`.
+         * - AXIS_ROWS:   Sums along each row. The resulting Collective has a shape of (1, Rows).
+         * *Note:* In NumPy, this is equivalent to `axis=1`.
+         * - AXIS_COLUMN: Sums down each column. The resulting Collective has a shape of (Cols, 1).
+         * *Note:* In NumPy, this is equivalent to `axis=0`.
+         * * 
+         * * @section Implementation Details:
+         * - Memory Initialization: Uses std::fill instead of memset. This ensures that the 
+         * elements (of type E) are correctly initialized via their constructor/assignment 
+         * operator (E(0)), making this safe for non-primitive types (e.g., complex numbers, 
+         * custom classes) where memset would cause undefined behavior.
+         * - Memory Layout: Assumes Row-Major indexing: index = (row * TotalColumns) + column.
+         * - Error Handling: Validates shape integrity before allocation. Catches bad_alloc 
+         * and length_error to wrap them in a custom ala_exception.
+         * * @param a    The input Collective to be summed.
+         * @param axis The direction of the reduction (AXIS_NONE, AXIS_ROWS, or AXIS_COLUMN).
+         * @return Collective<E> A new Collective containing the reduced sums.
+         * @throws ala_exception if the shape is malformed, axis is unknown, or memory allocation fails.
+         */
         template<typename E>
         static Collective<E> sum(Collective<E>& a, AXIS axis = AXIS_NONE) throw (ala_exception)
         {
@@ -2990,34 +3014,84 @@ static std::random_device rd;
             E* ptr = NULL;
 
             try
-            {
-                ptr = cc_tokenizer::allocator<E>().allocate(1);
+            {                
+                switch (axis) 
+                {
+                    case AXIS_NONE: // The default, axis=None, will sum all of the elements of the input array
+                        ptr = cc_tokenizer::allocator<E>().allocate(1);
+                    break;
+                    case AXIS_ROWS: // The axis = AXIS_ROWS does the sum Sum per row
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfRows());
+                    break;
+                    case AXIS_COLUMN: // The axis = AXIS_Column does the sum of each column across all rows
+                        ptr = cc_tokenizer::allocator<E>().allocate(a.getShape().getNumberOfColumns());
+                    break;
+                    default:
+                        throw ala_exception("Numcy::sum(Collective<E>&, AXIS) Error: Unknown axis."); 
+                    break; 
+                }
             }
             catch(std::length_error& e)
             {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+                // CRITICAL: Length constraint violation - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sum(Collective<E>&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));
             }
             catch(std::bad_alloc& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::sum() Error: ") + cc_tokenizer::String<char>(e.what()));
+            {                    
+                // CRITICAL: Memory allocation failure - system should terminate immediately
+                // NO cleanup performed - this is a fatal error requiring process exit
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::sum(Collective<E>&, AXIS) Error: ") + cc_tokenizer::String<char>(e.what()));
             }
-
-            *ptr = 0;
-            
+                        
             switch (axis) 
             {
                case AXIS_NONE: // The default, axis=None, will sum all of the elements of the input array
+
+                   *ptr = 0; 
+
                    for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getN(); i++)
                    {
                        *ptr = *ptr + a[i];  
                    } 
+
+                   return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
                break;
-               default:
-                   throw ala_exception("Numcy::sum() Error: Unknown axis."); 
+               case AXIS_ROWS: // The axis = AXIS_ROWS does the sum Sum per row
+
+                   //memset (ptr, 0, sizeof(E)*a.getShape().getNumberOfRows());
+
+                   std::fill (ptr, ptr + a.getShape().getNumberOfRows(), E(0));
+
+                   for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfRows(); i++)
+                   {
+                        for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfColumns(); j++)
+                        {
+                            ptr[i] = *(ptr + i) + a[i*a.getShape().getNumberOfColumns() + j]; 
+                        }                       
+                   }
+
+                   return Collective<E>{ptr, DIMENSIONS{1, a.getShape().getNumberOfRows(), NULL, NULL}};
+               break;
+               case AXIS_COLUMN: // The axis = AXIS_Column does the sum of each column across all rows
+
+                   //memset (ptr, 0, sizeof(E)*a.getShape().getNumberOfColumns());
+
+                   std::fill (ptr, ptr + a.getShape().getNumberOfColumns(), E(0));
+
+                   for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < a.getShape().getNumberOfColumns(); i++)
+                   {
+                        for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < a.getShape().getNumberOfRows(); j++)
+                        {
+                            ptr[i] = ptr[i] + a[j*a.getShape().getNumberOfColumns() + i]; 
+                        }                       
+                   }
+
+                   return Collective<E>{ptr, DIMENSIONS{a.getShape().getNumberOfColumns(), 1, NULL, NULL}};
                break; 
             }
 
-            return Collective<E>{ptr, DIMENSIONS{1, 1, NULL, NULL}};
+            return Collective<E>{NULL, DIMENSIONS{0, 0, NULL, NULL}};
         }
 
         template<typename E = double>
