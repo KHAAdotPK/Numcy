@@ -1354,16 +1354,20 @@ struct Collective
         }
         catch (std::bad_alloc& e)
         {
+            // CRITICAL: Memory allocation failure - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
             throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());    
         }
         catch (std::length_error& e)
         {
+            // CRITICAL: Length constraint violation - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
             throw ala_exception(cc_tokenizer::String<char>("Collective::operator - () Error: ") + e.what());
         }
 
         for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
         {
-            ptr[i] = (*this)[i] - (E)subtrahend;
+            ptr[i] = (*this)[i] - (F)subtrahend;
         }
 
         return Collective<E>{ptr, /**((*this).getShape().copy())*/ getShape()/*.copy()*/}; /* SIGMA CHANGE NEEDED HERE */
@@ -1373,76 +1377,142 @@ struct Collective
      * @brief Overloaded subtraction operator for the `Collective` class.
      *
      * This function performs element-wise subtraction between the current `Collective` object (minuend)
-     * and another `Collective` object (subtrahend). It supports two cases:
+     * and another `Collective` object (subtrahend). It supports multiple broadcasting scenarios:
      * 1. Scalar subtraction: If the subtrahend is a scalar (shape = 1), it subtracts the scalar value
      *    from every element of the minuend.
      * 2. Matrix subtraction: If the subtrahend has the same shape as the minuend, it performs
      *    element-wise subtraction between the two matrices.
+     * 3. Row broadcasting: If subtrahend is a row vector (1×n) and minuend is (m×n),
+     *    each row of the minuend is subtracted by the row vector.
+     * 4. Column broadcasting: If subtrahend is a column vector (m×1) and minuend is (m×n),
+     *    each column of the minuend is subtracted by the column vector.
      *
-     * @tparam F The data type of the subtrahend (default: double).
-     * @param subtrahend The `Collective` object to subtract from the current object.
+     * @tparam F The data type of the subtrahend (default: double). This template parameter allows
+     *          subtraction between Collectives of different types (e.g., Collective<int> - Collective<double>).
+     *          However, the result is always returned as Collective<E> where E is the type of the current object.
      *
-     * @return A new `Collective` object containing the result of the subtraction.
+     * @param subtrahend The `Collective` object to subtract from the current object. The use of `const Collective<F>&`
+     *                   is CRITICAL because:
+     *                   - It allows binding to both lvalues and rvalues (temporaries)
+     *                   - Prevents the original error C2677 by accepting the result of expressions like 
+     *                     `(dLogits_dW * learning_rate)` which are rvalues
+     *                   - Ensures the subtrahend is not modified during the operation
+     *                   - Follows C++ best practices for binary operators that don't modify their right operand
+     *  
+     * @return A new `Collective<E>` object containing the result of the subtraction.
+     *         IMPORTANT: The return type is always `Collective<E>`, regardless of the type `F` of the subtrahend.
+     *         This means type conversion occurs during the operation.
      *
      * @throws ala_exception Throws an exception under the following conditions:
      *   - If the minuend (current object) has a malformed shape (empty or invalid).
      *   - If memory allocation fails during the operation.
-     *   - If the subtrahend is not a scalar and its shape does not match the minuend's shape.
+     *   - If the subtrahend is not a scalar and its shape does not match any broadcasting pattern.
      *
-     * @note The function ensures proper memory management by deallocating temporary memory
-     *       in case of exceptions or errors.
+     * @warning TYPE CASTING PITFALLS:
+     *   This method uses C-style casts `(E)(subtrahend[...])` which can lead to:
+     *   1. **Precision Loss**: When casting from floating-point to integer types or from higher precision
+     *      to lower precision (e.g., `double → float` or `long double → double`).
+     *   2. **Undefined Behavior**: When the value being cast exceeds the representable range of type `E`.
+     *      For example, casting `INT_MAX + 1` to `int` from a `long`.
+     *   3. **Sign Issues**: When casting between signed and unsigned types (e.g., `-1` to `unsigned int`).
+     *   4. **NaN/Infinity Handling**: Casting NaN or infinity to integer types leads to undefined behavior.
+     *   5. **Silent Data Corruption**: All these issues occur without runtime checks or exceptions.
      *
+     *   RECOMMENDED FIXES (choose based on your needs):
+     *   - Use `static_cast<E>` for clarity (though same issues apply)
+     *   - Add bounds checking before casting
+     *   - Consider using `std::common_type_t<E, F>` for the result type instead of forcing `E`
+     *   - Implement safe conversion functions with overflow/underflow checks
+     *
+     * @note Memory Management:
+     *   - The function ensures proper memory management by deallocating temporary memory
+     *     in case of exceptions or errors, except for `std::bad_alloc` and `std::length_error`
+     *     which are considered unrecoverable fatal errors.
+     *   - Uses `cc_tokenizer::allocator<E>` for memory allocation which must be paired with
+     *     `cc_tokenizer::allocator<E>::deallocate()` for proper cleanup.
+     *
+     * @note Performance Considerations:
+     *   - The method creates a copy of the entire result, which may be expensive for large arrays.
+     *   - Broadcasting operations (cases 3 and 4) have O(m*n) complexity instead of O(n) for
+     *     element-wise operations between same-shaped arrays.
+     *
+     * @note Shape Compatibility Rules:
+     *   Let minuend shape = (m1, n1), subtrahend shape = (m2, n2)
+     *   Valid operations are:
+     *   1. m2 = n2 = 1 (scalar) - subtract from all elements
+     *   2. m1 = m2 AND n1 = n2 (same shape) - element-wise subtraction
+     *   3. m2 = 1 AND n1 = n2 (row vector) - broadcast row to all rows
+     *   4. m1 = m2 AND n2 = 1 (column vector) - broadcast column to all columns
+     *   
      * Example usage:
      * @code
-     * Collective<double> A = {1.0, 2.0, 3.0};
-     * Collective<double> B = {0.5, 1.5, 2.5};
-     * Collective<double> result = A - B; // Element-wise subtraction
-     * @endcode
-     *
-     * @code
+     * // Case 1: Scalar subtraction
      * Collective<double> A = {1.0, 2.0, 3.0};
      * Collective<double> scalar = {0.5};
-     * Collective<double> result = A - scalar; // Scalar subtraction
+     * Collective<double> result1 = A - scalar; // {0.5, 1.5, 2.5}
+     *
+     * // Case 2: Same shape subtraction
+     * Collective<double> B = {0.5, 1.5, 2.5};
+     * Collective<double> result2 = A - B; // {0.5, 0.5, 0.5}
+     *
+     * // Case 3: Row broadcasting (dangerous type cast example)
+     * Collective<int> C = {{1, 2, 3}, {4, 5, 6}}; // 2x3 matrix
+     * Collective<double> row = {0.5, 1.5, 2.5};   // 1x3 row vector
+     * Collective<int> result3 = C - row; // Casts 0.5→0, 1.5→1, 2.5→2, causing precision loss!
+     *
+     * // Case 4: Column broadcasting
+     * Collective<int> col = {10, 20};            // 2x1 column vector  
+     * Collective<int> result4 = C - col;         // Valid same-type operation
      * @endcode
-    */
+     *
+     * @see The original compilation error was:
+     *      error C2677: binary '-': no global operator found which takes type 'F' (or there is no acceptable conversion)
+     *      This was fixed by changing the parameter from `Collective<F>&` to `const Collective<F>&`
+     *      to allow binding to rvalues (temporary objects).
+     */
     template <typename F = double>
-    Collective<E> operator- (Collective<F>& subtrahend) throw (ala_exception)
+    Collective<E> operator- (const Collective<F>& subtrahend) throw (ala_exception)
     {   
-        E* ptr = NULL;
+        E* temp = NULL;
 
         if (!(*this).getShape().getN())
         {
-            throw ala_exception("Collective::operator - () Error: Malformed shape of the array received as minuend.");
+            throw ala_exception("Collective::operator- (const Collective<F>&) Error: Malformed shape of the array received as minuend.");
         }
 
         try
         {
-            ptr = cc_tokenizer::allocator<E>().allocate(getShape().getN());
+            temp = cc_tokenizer::allocator<E>().allocate((*this).getShape().getN());
         }
         catch (std::bad_alloc& e)
-        {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() Error: ") + e.what());    
+        {                         
+            // CRITICAL: Memory allocation failure - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) Error: ") + e.what());    
         }
         catch (std::length_error& e)
         {
-            throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() Error: ") + e.what());
+            // CRITICAL: Length constraint violation - system should terminate immediately
+            // NO cleanup performed - this is a fatal error requiring process exit
+            throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) Error: ") + e.what());
         }
 
         if (subtrahend.getShape().getN() == 1)
         {
             try
             {                                        
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < getShape().getN(); i++)
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getN(); i++)
                 {
-                    ptr[i] = (*this)[i] - (E)(subtrahend[0]);
+                    temp[i] = (*this)[i] - (E)(subtrahend[0]);
                 }
             }
             catch (ala_exception& e)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
-                ptr = NULL;
+                cc_tokenizer::allocator<E>().deallocate(temp, getShape().getN());
+                temp = NULL;
 
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
+                // Propagate existing ala_exception with additional context                
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) -> ") + e.what());
             }
         }
         else if ((*this).getShape() == subtrahend.getShape())
@@ -1451,26 +1521,69 @@ struct Collective
             {
                 for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < subtrahend.getShape().getN(); i++)
                 {
-                    ptr[i] = (*this)[i] - (E)(subtrahend[i]);
+                    temp[i] = (*this)[i] - (E)(subtrahend[i]);
                 }
             }
             catch (ala_exception& e)
             {
-                cc_tokenizer::allocator<E>().deallocate(ptr, getShape().getN());
-                ptr = NULL;
+                cc_tokenizer::allocator<E>().deallocate(temp, getShape().getN());
+                temp = NULL;
 
-                throw ala_exception(cc_tokenizer::String<char>("Collective::operator-() -> ") + e.what());
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) -> ") + e.what());
+            }
+        }
+        else if (subtrahend.getShape().getNumberOfRows() == 1  &&  subtrahend.getShape().getNumberOfColumns() == (*this).getShape().getNumberOfColumns())
+        {
+            try
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getNumberOfRows(); i++)
+                {
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < subtrahend.getShape().getN(); j++)
+                    {
+                        temp[i*(*this).getShape().getNumberOfColumns() + j] = (*this)[i*(*this).getShape().getNumberOfColumns() + j] - (E)(subtrahend[j]);
+                    }
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(temp, (*this).getShape().getN());
+                temp = NULL;
+
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) -> ") + e.what());
+            }
+        }
+        else if (subtrahend.getShape().getNumberOfRows() == (*this).getShape().getNumberOfRows() && subtrahend.getShape().getNumberOfColumns() == 1)
+        {
+            try
+            {
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < (*this).getShape().getNumberOfRows(); i++)
+                {
+                    for (cc_tokenizer::string_character_traits<char>::size_type j = 0; j < (*this).getShape().getNumberOfColumns(); j++)
+                    {
+                        temp[i*(*this).getShape().getNumberOfColumns() + j] = (*this)[i*(*this).getShape().getNumberOfColumns() + j] - (E)(subtrahend[i]);
+                    }
+                }
+            }
+            catch (ala_exception& e)
+            {
+                cc_tokenizer::allocator<E>().deallocate(temp, (*this).getShape().getN());
+                temp = NULL;
+
+                // Propagate existing ala_exception with additional context
+                throw ala_exception(cc_tokenizer::String<char>("Collective::operator- (const Collective<F>&) -> ") + e.what());
             }
         }
         else
         {
-            cc_tokenizer::allocator<E>().deallocate(ptr, /*(*this).getShape().getN()*/ getShape().getN());
-            ptr = NULL;
+            cc_tokenizer::allocator<E>().deallocate(temp, /*(*this).getShape().getN()*/ (*this).getShape().getN());
+            temp = NULL;
 
-            throw ala_exception("Collective::operator-() Error: Cannot subtract matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
+            throw ala_exception("Collective::operator- (const Collective<F>&) Error: Cannot subtract matrices with incompatible shapes. Ensure both matrices have the same dimensions before performing the operation.");
         }
 
-        return Collective<E>{ptr, getShape()};
+        return Collective<E>{temp, (*this).getShape()};
     }
 
     bool operator== (Collective<E>& other)
