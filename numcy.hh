@@ -2633,6 +2633,78 @@ static std::random_device rd;
         }
 
         /*
+            The softmax function is a mathematical transformation that converts a vector of real numbers 
+            into a probability distribution. This ensures:
+                - All output values lie between 0 and 1.
+                - The sum of all output values is 1.
+
+            Parameters:
+                - a: Collective<T> 
+                  A vector of real-valued numbers representing the unnormalized logits (raw scores) 
+                  from the output layer of the CBOW model.
+                - temperature: T
+                  The temperature parameter controls (the knob value) the randomness of the output distribution.
+                  - temperature = 1.0: Natural distribution (no change).
+                  - temperature > 1.0: Flattens the distribution (more random).
+                  - temperature < 1.0: Sharpens the distribution (more deterministic).                    
+                  We use Temperature only during inference (testing the model).
+                  During training, we want the model to learn the true distribution of the data, so we don't use temperature scaling.
+                  Train at $T=1.0$ (This keeps the "math" natural).
+             
+                - verbose: bool (optional, default = false)
+                  If true, prints intermediate steps (useful for debugging).
+
+            Returns:
+                - Collective<T>
+                  A probability distribution over the vocabulary, where each value represents the probability 
+                  of the corresponding word being the correct target word.
+
+            The computation follows these steps:
+                1. Subtract the maximum value from all elements for numerical stability.
+                2. Apply the exponential function.
+                3. Normalize by dividing each element by the sum of all exponentiated values.
+
+            This ensures that the output probabilities do not suffer from floating-point precision issues 
+            and remain numerically stable.
+        */
+        template <typename T>
+        static Collective<T> softmax(Collective<T>& a, T temperature, bool verbose = false) throw (ala_exception)
+        {
+            Collective<T> a_d_t; // a divided by temprature
+
+            Collective<T> m_o_a_d_t; // max of a divided by temprature
+            Collective<T> a_d_t_minus_m_o_a_d_t; // a divided by temprature minus max of a divided by temprature
+            Collective<T> e_a_d_t_minus_m_o_a_d_t; // exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature)
+            Collective<T> s_e_a_d_t_minus_m_o_a_d_t; // sum of e_a_d_t_minus_m_o_a_d_t (exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature))
+
+            Collective<T> e_a_d_t_minus_m_o_a_d_t_divided_by_e_a_d_t_minus_m_o_a_d_t_sum; //  division betwen e_a_d_t_minus_m_o_a_d_t (exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature)) and s_e_a_d_t_minus_m_o_a_d_t (sum of e_a_d_t_minus_m_o_a_d_t (exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature)))
+
+            try
+            {
+                // The division by temperature to the very beginning, ensures that the entire distribution is reshaped before the handling of the numerical stability (the max-subtraction) and the final probabilities.                
+                a_d_t = a / temperature;
+                m_o_a_d_t = Numcy::max(a_d_t); // max of a divided by temprature
+                a_d_t_minus_m_o_a_d_t = Numcy::subtract(a_d_t, m_o_a_d_t); // a divided by temprature minus max of a divided by temprature    
+                e_a_d_t_minus_m_o_a_d_t = Numcy::exp(a_d_t_minus_m_o_a_d_t); // exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature) 
+                s_e_a_d_t_minus_m_o_a_d_t = Numcy::sum(e_a_d_t_minus_m_o_a_d_t); // sum of e_a_d_t_minus_m_o_a_d_t (exp over a_d_t_minus_m_o_a_d_t (a divided by temprature minus max of a divided by temprature))
+                
+               /*
+                    Normalization step:
+                    Each element is divided by the sum of all exponentiated values 
+                    to ensure that the sum of the output probabilities is exactly 1.
+                */
+                e_a_d_t_minus_m_o_a_d_t_divided_by_e_a_d_t_minus_m_o_a_d_t_sum  = Numcy::divide(e_a_d_t_minus_m_o_a_d_t, s_e_a_d_t_minus_m_o_a_d_t);
+            }
+            catch(ala_exception& e)
+            {   
+                // NO cleanup performed - this is a fatal error requiring process exit     
+                throw ala_exception(cc_tokenizer::String<char>("softmax(const Collective<T>&, T, bool) -> ") + cc_tokenizer::String<char>(e.what()));
+            }
+            
+            return e_a_d_t_minus_m_o_a_d_t_divided_by_e_a_d_t_minus_m_o_a_d_t_sum;
+        }
+
+        /*
          * This function calculates the sign of elements in a Numcy array 'x'.
          * It returns a new Collective object with the same shape as 'x' containing the signs.
          *
