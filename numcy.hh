@@ -2633,6 +2633,20 @@ static std::random_device rd;
         }
 
         /*
+            The Softmax function is refactored to include a `temperature` parameter () to control the probability distribution of predicted symptoms.
+
+            ### Mathematical Logic
+
+            To ensure numerical stability and avoid floating-point overflow, the following sequence was implemented:
+
+            1. **Scaling:** All raw logits () are divided by the temperature ().
+            2. **Stability:** The maximum value of the scaled logits () is subtracted from each element.
+            3. **Exponentiation:** The stabilized values are exponentiated.
+            4. **Normalization:** The result is divided by the sum of all exponents to produce a probability range .
+
+	                $$P_i = \frac{\exp((a_i / T) - \max(a / T))}{\sum \exp((a_j / T) - \max(a / T))}$$
+         */
+        /*
             The softmax function is a mathematical transformation that converts a vector of real numbers 
             into a probability distribution. This ensures:
                 - All output values lie between 0 and 1.
