@@ -2580,7 +2580,7 @@ struct Collective
 
         if (read_count != this->getShape().getN())
         {
-            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::write(cc_tokenizer::String<char>&, bool) Error: Could not read from the file \"");
+            cc_tokenizer::String<char> message1 = cc_tokenizer::String<char>("Collective<E>::read(cc_tokenizer::String<char>&, bool) Error: Could not read from the file \"");
             cc_tokenizer::String<char> message2 = cc_tokenizer::String<char>("\".");
                         
             fclose(fptr_read);
