@@ -2377,7 +2377,7 @@ static std::random_device rd;
          * @throws ala_exception If the input tensor has an invalid or malformed shape (i.e., contains zero elements).
          */
         template<typename E = double>
-        static Collective<E> ReLU(Collective<E>& x) throw (ala_exception)
+        static Collective<E> ReLU_old(Collective<E>& x) throw (ala_exception)
         {
             if (!x.getShape().getN())
             {                
@@ -2401,6 +2401,96 @@ static std::random_device rd;
             }
             
             return ret;
+        }
+
+        /**
+         * @brief Applies the ReLU (Rectified Linear Unit) activation function to the input tensor.
+         * 
+         * @details In the forward pass, this computes the element-wise transformation:
+         * @f[ H_2 = \text{ReLU}(Z_2) = \max(0, Z_2) @f]
+         * 
+         * For backpropagation, this operation (ReLU_Derivative()) implies a local gradient @f$ \frac{dH_2}{dZ_2} @f$ 
+         * which is a diagonal Jacobian matrix. Since diagonal matrices are symmetric:
+         * @f[ \text{ReLU}'(Z_2) = \left( \frac{dH_2}{dZ_2} \right)^T @f]
+         * 
+         * The upstream gradient is propagated using the Hadamard product @f$ \odot @f$:
+         * @f[ dZ_2 = dH_2 \odot \text{ReLU}'(Z_2) @f]
+         *
+         * @tparam E The data type of the elements (default: double).
+         * @param x The input tensor @f$ Z_2 @f$ of type Collective<E>.
+         * @return Collective<E> The activated tensor @f$ H_2 @f$.
+         * 
+         * @throws ala_exception If the input tensor has an invalid or malformed shape (i.e., contains zero elements).
+         */
+        template<typename E = double>
+        static Collective<E> ReLU(Collective<E>& x) throw (ala_exception)
+        {
+            if (!x.getShape().getN())
+            {                
+                throw ala_exception("Numcy::ReLU(Collective<E>&) Error: The input tensor is empty or uninitialized. Ensure that it has valid dimensions before applying ReLU.");
+            }
+
+            Collective<E> ret = x;
+
+            try
+            {
+                // Computes H_2 = max(0, Z_2) element-wise
+                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
+                {
+                    ret[i] = std::max((E)0, x[i]); // ret[i] * 0. Neuron was OFF - kill gradient
+                                                   // else: ret[i] remains ret[i] * 1. Neuron was ON - gradient passes through unchanged
+                }
+            }
+            catch(ala_exception& e)
+            {
+                throw ala_exception(cc_tokenizer::String<char>("Numcy::ReLU(Collective<E>&) -> ") + cc_tokenizer::String<char>(e.what())); 
+            }
+            
+            return ret;
+        }
+
+        /**
+         * @brief Computes the gradient of the ReLU activation function (Backward Pass).
+         * 
+         * @details This function calculates the local gradient @f$ \text{ReLU}'(Z_2) @f$ and 
+         * applies it to the upstream gradient @f$ dH_2 @f$ using the Hadamard product:
+         * @f[ dZ_2 = dH_2 \odot \text{ReLU}'(Z_2) @f]
+         *
+         * Where the element-wise derivative is defined as:
+         * @f[ \text{ReLU}'(z) = \begin{cases} 1 & \text{if } z > 0 \\ 0 & \text{if } z \leq 0 \end{cases} @f]
+         *
+         * For backpropagation, this operation implies a local gradient @f$ \frac{dH_2}{dZ_2} @f$ 
+         * which is a diagonal Jacobian matrix. Since diagonal matrices are symmetric:
+         * @f[ \text{ReLU}'(Z_2) = \left( \frac{dH_2}{dZ_2} \right)^T @f]
+         * 
+         * @tparam E The data type of the elements (default: double).
+         * @param dH2 The upstream gradient tensor (gradient of loss w.r.t output).
+         * @param Z2 The raw input tensor from the forward pass (pre-activation).
+         * @return Collective<E> The resulting gradient @f$ dZ_2 @f$.
+         */
+        template<typename E = double>
+        static Collective<E> ReLU_Derivative(Collective<E>& dH2, const Collective<E>& Z2)
+        {
+            if (dH2.getShape().getN() != Z2.getShape().getN())
+            {
+                throw ala_exception("Numcy::ReLU_Derivative(Collective<E>&, const Collective<E>&) Error: The input tensors have different shapes.");
+            }
+ 
+            // We clone the upstream gradient to modify it
+            Collective<E> dZ2 = dH2;
+            
+            for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < dZ2.getShape().getN(); i++)
+            { 
+                // Applying the gate: if the original input was <= 0, the gradient is killed.
+                // This represents (dH2/dZ2)^T being 0 at this index.
+                if (Z2[i] <= (E)0)
+                {
+                    dZ2[i] = (E)0; // dH2[i] * 0. Neuron was OFF - kill gradient
+                }
+                // else: dZ2[i] remains dH2[i] * 1. Neuron was ON - gradient passes through unchanged
+            }
+
+            return dZ2;
         }
 
         /*
