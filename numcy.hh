@@ -751,7 +751,7 @@ class Numcy
                   *   In both cases, num_weights = input_size * output_size
                   */                
                 template <typename E = double>                
-                static Collective<E> randn_xavier(DIMENSIONS like, bool normal_or_uniform_real_distribution = true) throw (ala_exception)
+                static Collective<E> randn_xavier(DIMENSIONS like, E seed = 0, bool normal_or_uniform_real_distribution = true) throw (ala_exception)
                 {
                     cc_tokenizer::string_character_traits<char>::size_type num_weights = like.getN();
                     
@@ -765,7 +765,16 @@ class Numcy
 
                     // Random number generator
                     std::random_device rd;
-                    std::mt19937 gen(rd());
+                    //std::mt19937 gen(rd());
+                    std::mt19937 gen;
+                    if (seed != 0)
+                    {
+                        gen.seed(seed);
+                    }
+                    else
+                    {
+                        gen.seed(rd());
+                    }
 
                     // Xavier (Glorot) initialization parameters
                     E mean = 0.0;
