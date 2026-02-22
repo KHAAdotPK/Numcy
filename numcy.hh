@@ -2367,45 +2367,6 @@ static std::random_device rd;
         /**
          * @brief Applies the ReLU (Rectified Linear Unit) activation function to the input tensor.
          * 
-         * ReLU is defined as: f(x) = max(0, x). This function ensures that all negative values
-         * in the input tensor are replaced with zero, introducing non-linearity into the model.
-         *
-         * @tparam E The data type of the elements (default: double).
-         * @param x The input tensor of type Collective<E>.
-         * @return Collective<E> The transformed tensor after applying ReLU.
-         * 
-         * @throws ala_exception If the input tensor has an invalid or malformed shape (i.e., contains zero elements).
-         */
-        template<typename E = double>
-        static Collective<E> ReLU_old(Collective<E>& x) throw (ala_exception)
-        {
-            if (!x.getShape().getN())
-            {                
-                throw ala_exception("Numcy::ReLU() Error: The input tensor is empty or uninitialized. Ensure that it has valid dimensions before applying ReLU.");
-            }
-
-            Collective<E> ret;
-
-            ret = x;
-
-            try
-            {
-                for (cc_tokenizer::string_character_traits<char>::size_type i = 0; i < x.getShape().getN(); i++)
-                {
-                    ret[i] = std::max((E)0, x[i]);
-                }
-            }
-            catch(ala_exception& e)
-            {
-                throw ala_exception(cc_tokenizer::String<char>("Numcy::ReLU() -> ") + cc_tokenizer::String<char>(e.what())); 
-            }
-            
-            return ret;
-        }
-
-        /**
-         * @brief Applies the ReLU (Rectified Linear Unit) activation function to the input tensor.
-         * 
          * @details In the forward pass, this computes the element-wise transformation:
          * @f[ H_2 = \text{ReLU}(Z_2) = \max(0, Z_2) @f]
          * 
