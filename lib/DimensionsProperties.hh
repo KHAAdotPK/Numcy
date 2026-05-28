@@ -1,32 +1,114 @@
 /*
- * lib/Numcy/header.hh
- * 
- * This file is the header file for the Numcy library.
- * It is used to include all the header files for the Numcy library.
- * 
+ * Numcy/DimensionsProperties.hh     
+ *
  * Q@hackers.pk
+*/
+
+/*
+    To stop every translation unit that includes Dimensions.hh from always processing 
+    DimensionsProperties.hh, even in circular or repeated inclusion scenarios.
+    We use the #include guard. 
+*/
+
+/*
+   From the point of view of templatd types, CUDA APIs expect specific types, size_t or int64_t.
  */
 
-#ifndef NUMCY_HEADER_HH
-#define NUMCY_HEADER_HH
+#ifndef NUMCY_DIMENSIONS_PROPERTIES_HH
+#define NUMCY_DIMENSIONS_PROPERTIES_HH
 
-#ifdef COMPILE_FOR_DEVICE
-    #include <curand_kernel.h>    // curandState, curand_init, curand_normal_double
-    #include <curand.h>           // cuRAND host API (may need this later)
-    #include <cuda_runtime.h>     // cudaMalloc, cudaFree, cudaMemcpy
-#endif
+/*
+    Linked List of 2D Slices. Each node represents one 2D matrix within a higher-dimensional tensor
+*/
+template <typename T = size_t>
+class DimensionsProperties 
+{
+        T columns; // Width of a 2D slice
+        T rows; // Height of 2D slice, number of such slices
+        DimensionsProperties<T>* next; // Next slice in tensor
+        DimensionsProperties<T>* prev; // Previous slice in tensor
+              
+        /*
+         * Reference counting tracks the number of active Dimensions objects sharing this node.
+         * When a node is first created, it is owned by exactly one Dimensions object,
+         * so the count starts at 1.
+         *
+         * The count is incremented when a new Dimensions object copies or takes shared
+         * ownership of this node, and decremented when a Dimensions object releases it.
+         * When the count reaches 0, no Dimensions object owns this node and it is safe to delete.
+         *
+         * The responsibility of managing the reference count lies with the Dimensions class
+         * via incrementReferenceCount() and decrementReferenceCount().
+         */        
+        size_t reference_count;
 
-#include "./lib/Axis.hh"
-#include "./lib/MemoryLocation.hh"
+    public:
+        /*
+         * Constructor for creating a new DimensionsProperties node.
+         * Initializes the columns and rows, and sets up the linked list pointers.
+         */
+        DimensionsProperties(T c, T r) : columns(c), rows(r), next(nullptr), prev(nullptr), reference_count(1)
+        {            
+        }
 
-#include "./lib/DimensionsProperties.hh"
-#include "./lib/CollectiveProperties.hh"
-#include "./lib/Dimensions.hh"
-#include "./lib/Collective.hh"
+        void incrementReferenceCount(void) 
+        {
+            this->reference_count++;
+        }
 
-#include "./lib/kernels.hh"
-#include "./lib/NumcyUtils.hh" // Helper functions
-#include "./lib/Numcy.hh"
+        void decrementReferenceCount(void)
+        {
+            if (this->reference_count > 0)
+            {
+                this->reference_count--;
+            }
+        }
+
+        T getColumns(void) const
+        {
+            return this->columns;
+        }
+
+        T getRows(void) const
+        {
+            return this->rows;
+        }
+
+        DimensionsProperties<T>* getNext(void) const
+        {
+            return this->next;
+        }
+
+        DimensionsProperties<T>* getPrevious(void) const
+        {
+            return this->prev;
+        }
+
+        size_t getReferenceCount(void) const
+        {
+            return this->reference_count;
+        }
+
+        void setColumns(T c)
+        {
+            this->columns = c;
+        }
+
+        void setRows(T r)
+        {
+            this->rows = r;
+        }
+
+        void setNext(DimensionsProperties<T>* n)
+        {
+            this->next = n;
+        }
+
+        void setPrev(DimensionsProperties<T>* p)
+        {
+            this->prev = p;
+        }
+};
 
 #endif
 

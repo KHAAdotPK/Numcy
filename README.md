@@ -1,141 +1,152 @@
-# Numcy C/C++ Library
-`Numcy` is a `C++` library aimed at providing functionalities similar to the popular `Python` `NumPy` library. It offers a set of classes and functions to work with multi-dimensional arrays, perform mathematical operations, and support numerical computing in `C++`.
+# Numcy — Documentation Index
 
-## Dependencies
+**Project:** Numcy — A C++ Tensor Library  
+**Author:** Q@hackers.pk
 
-Ensure you have the following dependencies cloned into the `./lib` directory before using `NumCy`:
+This file is the entry point for all documentation in the Numcy library. Each document below covers a specific class, concept, or architectural decision. They are ordered from the lowest level (individual node) up to the highest level (full tensor container), followed by cross-cutting architecture documents.
 
-- [string](https://github.com/KHAAdotPK/string.git)
-- [ala_exception](https://github.com/KHAAdotPK/ala_exception.git)
+---
 
-## Classes
+## Core Class Documentation
 
-## `DimensionsOfArray` Class
-The `DimensionsOfArray` class is a utility class that helps manage dynamically allocated arrays for storing dimensions.
-#### Example Usage:
-```C++
-/*
-    Creating and comparing instances of DimensionsOfArray for two three-dimensional arrays.
+### [`Dimensions.md`](./DOCUMENTS/Dimensions.md)
 
-    1. Creating array 'arrayA' with dimensions [2][3][10]. A three dimensional array, with six inner arrays(two three-dimensional arrays), and then each inner array is a single line array(the innermost array)  of 10 columns.
-    2. Initializing DimensionsOfArray 'dimsA' with 'arrayA' dimensions.
-    3. Displaying the size (number of dimensions) and the number of inner arrays for 'arrayA'.
-    
-    4. Creating array 'arrayB' with dimensions [2][3][8]. A three dimensional array, with six inner arrays(two  three-dimensional arrays), and then each inner array is a single line array(the innermost array) of 8 columns.
-    5. Initializing DimensionsOfArray 'dimsB' with 'arrayB' dimensions.
-    6. Comparing the number of inner arrays between 'arrayA' and 'arrayB'.
-        - If equal, output a message indicating the similarity.
-*/
-cc_tokenizer::string_character_traits<char>::size_type arrayA[] = {2, 3, 10};
-DimensionsOfArray dimsA(arrayA, sizeof(arrayA)/sizeof(cc_tokenizer::string_character_traits<char>::size_type));
-// Displaying the dimensions of the array and the number of inner arrays.
-std::cout << "Size (number of dimensions) = " << dimsA.size() << std::endl;
-std::cout<< dimsA.getNumberOfInnerArrays() << std::endl;
-cc_tokenizer::string_character_traits<char>::size_type arrayB[] = {2, 3, 8};
-DimensionsOfArray dimsB(arrayB, sizeof(arrayB)/sizeof(cc_tokenizer::string_character_traits<char>::size_type));    
-if ( dimsB.compare(dimsA) ) 
-{
-    std::cout<< "They have same number of inner arrays..." << std::endl;
-}
-/*
-    Outputting the dimensions of the first three-dimensional array 'arrayA' using the overloaded operator.
+**File:** `Numcy/Dimensions.hh`
 
-    Iterating through each dimension using a loop:
-    - 'dimsA.size()' provides the total number of dimensions.
-    - Printing the ith dimension value using the overloaded 'operator[]'.
+Documents the `Dimensions<T>` class — the doubly-linked list that encodes tensor shape.
 
-    Example:
-    For the array 'arrayA' with dimensions [2][3][10], the output would be: 2 3 10
-*/
-for (size_t i = 0; i < dimsA.size(); i++)
-{
-    std::cout << dimsA[i] << " ";
-}
-std::cout << std::endl;
-```
+| Topic | Section |
+|---|---|
+| The core invariant (`columns = 0` on all but tail) | Overview |
+| Why each instance keeps its own `n` | §Why Each Instance Keeps Its Own `n` |
+| Default, two-parameter, pointer, and copy constructors | §Constructors |
+| Destructor and selective node deletion | §Destructor |
+| Assignment operator | §Operator Overloading |
+| `append()` — building shapes one slice at a time | §append() |
+| `fromVector()` — building from a `std::vector` | §fromVector() |
+| `getNumberOfColumns()` and `getNumberOfRows()` | §getNumberOfColumns(), §getNumberOfRows() |
+| `numel()` — total element count | §numel() |
+| `reshape()` — in-place metadata surgery | §reshape() |
+| `size()` — node count | §size() |
+| `transpose()` — axis-swapped shape copy | §transpose() |
+| `toVector()` — reconstruct shape vector | §toVector() |
+| `size()` vs `numel()` distinction | §size() vs numel() |
+| `n` maintenance table | §n Maintenance |
+| Full usage examples (8 examples) | §Complete Usage Examples |
 
-## `Dimensions` Class
-The `Dimensions` class represents the shape and size of a multi-dimensional array. It holds information about the number of dimensions, size along each dimension, and pointers to previous and next `Dimensions` instances.
-#### Example Usage:
-```C++
-/*    
-    Manually initializing a doubly linked list to represent the dimensions
-    of a multi-dimensional array in C/C++.
+---
 
-    The array has the shape [9][78][10][10][3].
+### [`Axis.md`](./DOCUMENTS/Axis.md)
 
-    The DIMENSIONS structure is used to define each dimension node,
-    where 'size' represents the size of the dimension, and 'prev' and 'next'
-    pointers establish the doubly linked list connections.
+**File:** `Numcy/axis.hh`
 
-    The linked list is constructed as follows:
-        dim -> dim1 -> dim2 -> dim3
+Documents the `numcy::Axis` scoped enum — the named constants used wherever an axis index is required.
 
-    Each dimension node is initialized with its respective size,
-    and the 'prev' pointers are set to establish the backward connections.
+| Topic | Section |
+|---|---|
+| Standard axis mapping (Rows, Columns, Slices) | §Overview |
+| Full enum definition and value table | §The Axis Enum |
+| Why `enum class` with underlying type `int` | §Why a Scoped Enum with Underlying Type `int` |
+| Mapping onto the `Dimensions` linked list | §How Axis Fits with the Dimensions Linked List |
+| Negative index normalization (`Last`, `SecondLast`) | §Negative Index Normalization |
+| Usage examples | §Usage |
+| Invariants | §Invariants |
 
-    Example:
-        dim (0, 9) -> dim1 (0, 78) -> dim2 (0, 10) -> dim3 (10, 3)
-*/
-cc_tokenizer::string_character_traits<char>::size_type *ptr = cc_tokenizer::allocator<cc_tokenizer::string_character_traits<char>::size_type>().allocate(5);
-   
-    // I died a little
-    ptr[0] = 9;
-    ptr[1] = 78;
-    ptr[2] = 10;
-    ptr[3] = 3;
-    ptr[4] = 10;
+---
 
-    DIMENSIONSOFARRAY dimensionsOfArray(ptr, 5);
+### [`CollectiveProperties.md`](./DOCUMENTS/Collective.md) *(documented inside Collective.md)*
 
-    DIMENSIONS dim(dimensionsOfArray);
+`CollectiveProperties<T, E>` is the shared control block holding `T* data`, `Dimensions<E>`, `reference_count`, and `MemoryLocation`. It has no standalone `.md` file — it is fully covered in `Collective.md`.
 
-    std::cout<< "Number of inner arrays = " << dimensionsOfArray.getNumberOfInnerArrays() << std::endl;
-    std::cout<< "Size of inner most array = " << dimensionsOfArray[dimensionsOfArray.size() - 1] << std::endl;
-    std::cout<< "Size = " << dimensionsOfArray.size() << std::endl;
-    
-    for (int i = 0; i < dimensionsOfArray.size(); i++)
-    {
-        std::cout<< dimensionsOfArray[i] << " ";
-    }
-    
-    DIMENSIONS_PTR current = dim.copy();
+---
 
-    std::cout<< "\nDimensions... " << std::endl;
-    while (current != NULL)
-    {
-        std::cout<< "Columns: " << current->columns << ", Rows: " << current->rows << std::endl;        
-        current = current->next;
-    }
+### [`Collective.md`](./DOCUMENTS/Collective.md)
 
-    std::cout<< "Size of array: " << dim.getN() << std::endl; 
+**Files:** `Numcy/Collective.hh`, `Numcy/CollectiveProperties.hh`
 
-    cc_tokenizer::allocator<cc_tokenizer::string_character_traits<char>::size_type>().deallocate(ptr);
-```
+Documents the primary tensor container `Collective<T, E>` and its backing store `CollectiveProperties<T, E>`.
 
-## `Collective` Class
-The `Collective` class is a wrapper for multi-dimensional arrays. It encapsulates the data array along with its shape and provides convenient accessors and operations.
-#### Example Usage:
-```C++
-float* data = new float[10];
-Dimensions shape = {10, 1, NULL, NULL};
-Collective<float> array(data, shape);
-```
-## `Numcy` Class
-The `Numcy` class contains static methods that provide various mathematical and array operations, such as creating arrays filled with zeros, computing dot products, performing concatenation, and more.
-### Example Usage:
-```C++
-Collective<float> zerosArray = Numcy::zeros<float>({0, 1, &shape, NULL});
-```
+| Topic | Section |
+|---|---|
+| What `Collective` is | §1 |
+| Why two classes (`Collective` + `CollectiveProperties`) | §2 |
+| Template parameters `T` and `E` | §3 |
+| Memory layout diagram | §4 |
+| Default constructor (`properties = nullptr`) | §5 |
+| Constructor from `Dimensions` (host allocation) | §5 |
+| Constructor from raw pointer (device/host) | §5 |
+| Copy constructor — shared ownership, no data copy | §6 |
+| Copy assignment operator | §7 |
+| Destructor and `properties = nullptr` | §8 |
+| `operator[]` — bounds-checked element access | §9 |
+| `getShape()` — const reference to shape | §10 |
+| `getData()` — raw pointer for CUDA kernels | §11 |
+| `getMemoryLocation()` — Host or Device | §12 |
+| `toDevice()` and `toHost()` — CUDA transfers | §13 |
+| `transpose()` — axis-swapped collective | §14 |
+| Full usage examples (7 examples) | §15 |
+| Design decisions and rationale | §16 |
+| Invariants | §17 |
+| What `Collective` does not do | §18 |
 
-## Getting Started
-1. Include the `NumCy` library in your `C++` project. You can do this by adding the necessary source files to your project or linking against the compiled Numcy library.
-2. Use the provided classes and functions to perform numerical computations similar to `NumPy` in `Python`. The library offers a range of functionalities, from creating multi-dimensional arrays to performing mathematical operations.
-3. Reference the `NumCy` documentation for detailed information on each function. The documentation, although currently in progress, will include examples and explanations to help you understand and utilize the capabilities of the `NumCy` library effectively.
-4. Explore the [USAGE.md](USAGE.md) file for a comprehensive example code that demonstrates the usage of various `NumCy` functions. This example code serves as a practical guide to implementing numerical computations using the `NumCy` library. 
+---
 
-## Contributing
-If you find issues or have suggestions for improvement, feel free to contribute!
+## Architecture Documents
 
-## License
-This project is governed by a license, the details of which can be located in the accompanying file named 'LICENSE.' Please refer to this file for comprehensive information.
+### [`Three_Level_Reference_Counting.md`](./DOCUMENTS/Three_Level_Reference_Counting.md)
+
+Describes the full three-level reference counting architecture that connects `Collective`, `CollectiveProperties`, `Dimensions`, and `DimensionsProperties` into a single coherent memory management system.
+
+| Topic | Section |
+|---|---|
+| Motivation — why shared ownership matters for deep learning | §1 |
+| Architecture overview diagram and level table | §2 |
+| Level 1 — `Collective` ↔ `CollectiveProperties` | §3 |
+| Level 2 — `CollectiveProperties` ↔ `Dimensions` (value member) | §4 |
+| Level 3 — `Dimensions` ↔ `DimensionsProperties` nodes | §5 |
+| All special members of `Collective` with code | §6 |
+| All special members of `Dimensions` with code | §7 |
+| Full destructor chain end-to-end | §8 |
+| `reshape()` and the reference counting architecture | §9 |
+| Why `n` lives in `Dimensions`, not `DimensionsProperties` | §10 |
+| Thread safety note | §11 |
+| Invariants summary table | §12 |
+
+---
+
+### [`collective_data_model.md`](./DOCUMENTS/collective_data_model.md)
+
+Describes how tensor data is physically stored in memory — the C row-major layout, the index arithmetic, and the relationship between the `Dimensions` linked list and the flat buffer.
+
+| Topic | Section |
+|---|---|
+| Flat contiguous buffer and the two key objects | §1 |
+| The C array analogy — how `arr[s][r][c]` maps to a flat offset | §2 |
+| Side-by-side comparison: C array vs `Collective` | §3 |
+| `Dimensions` node structure and the `columns = 0` invariant | §4.1 |
+| How `fromVector()` builds nodes (shape length `k` → `k-1` nodes) | §4.2 |
+| Worked example: shape `[2, 4, 8]` — 2 nodes, `numel = 64` | §4.3 |
+| Worked example: shape `[2, 4, 8, 16]` — 3 nodes, `numel = 1024` | §4.4 |
+| General rule: shape vector length `k` → `k-1` nodes | §4.5 |
+| N-D flat index formula | §5 |
+| Why physical transpose only affects `Last ↔ SecondLast` | §6 |
+| Ownership model and `MemoryLocation` | §7.1–7.2 |
+| Default-constructed `Collective` (`properties = nullptr`) | §7.3 |
+| Lifecycle of a transposed `Collective` | §7.4 |
+| Summary table | §8 |
+
+---
+
+## Reading Order
+
+If you are new to the codebase, read in this order:
+
+1. `DOCUMENTS/Collective_Data_Model.md` — understand the memory model first
+2. `DOCUMENTS/Axis.md` — understand how axes are named
+3. `DOCUMENTS/Dimensions.md` — understand how shape is represented
+4. `DOCUMENTS/Collective.md` — understand the full tensor container
+5. `DOCUMENTS/Three_Level_Reference_Counting.md` — understand the ownership and lifetime model
+
+---
+
+*All documents were written against the current development revision of the Numcy source files.*
