@@ -114,7 +114,7 @@ Describes the full three-level reference counting architecture that connects `Co
 
 ---
 
-### [`collective_data_model.md`](./DOCUMENTS/Collective_Data_Model.md)
+### [`Collective_Data_Model.md`](./DOCUMENTS/Collective_Data_Model.md)
 
 Describes how tensor data is physically stored in memory — the C row-major layout, the index arithmetic, and the relationship between the `Dimensions` linked list and the flat buffer.
 
