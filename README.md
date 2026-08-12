@@ -1,7 +1,25 @@
 # Numcy — Documentation Index
 
 **Project:** Numcy — A C++ Tensor Library  
-**Author:** Q@hackers.pk
+**Author:** Sohail Qayum Malik
+
+---
+> **🚀 Numcy is in Transition: From CPU to CPU + GPU**
+> 
+> Numcy is evolving from a CPU-only library to a hybrid framework that supports both CPU and **CUDA GPUs**. This transition requires a fundamental shift in how we handle tensor memory—moving from a flexible linked-list metadata model to a **flat, contiguous memory layout** that is compatible with GPU hardware.
+> 
+> To understand why this change is necessary and how the new memory model works, please read the new documentation:
+> 
+> 👉 **[Column and Row Major Arrays in Numcy](https://github.com/KHAAdotPK/Numcy/blob/main/DOCUMENTS/Column_And_Row_Major_Arrays.md)**
+> 
+> This document explains:
+> *   **Row-major vs. column-major** memory layouts and their stride calculations
+> *   How flat memory offsets are computed for efficient element access
+> *   How tensor transposition works in both 2D and 3D
+> *   Why a flat, contiguous buffer is essential for **coalesced memory access** on GPUs
+> 
+> These concepts are critical for the new `Collective` tensor container and for writing high-performance CUDA kernels. The documentation is actively being developed as we complete the GPU transition.
+---
 
 This file is the entry point for all documentation in the Numcy library. Each document below covers a specific class, concept, or architectural decision. They are ordered from the lowest level (individual node) up to the highest level (full tensor container), followed by cross-cutting architecture documents.
 
